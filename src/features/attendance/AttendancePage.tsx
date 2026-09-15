@@ -255,7 +255,11 @@ function StudentAttendance() {
   )
 }
 
-/** Shows a whole class's month at a glance: the day's dominant status wins. */
+/**
+ * A whole class's month at a glance. The colour reflects how much of the class
+ * was in that day, not the worst single student — otherwise one absence turns
+ * the entire month red and the view tells the reader nothing.
+ */
 function MonthSummary({
   month, onMonthChange, data,
 }: {
@@ -263,11 +267,20 @@ function MonthSummary({
   onMonthChange: (m: string) => void
   data: { date: string; present: number; absent: number; late: number; excused: number }[]
 }) {
+  const { t } = useTranslation()
   const days = data.map((d) => {
-    const worst = d.absent > 0 ? 'absent' : d.late > 0 ? 'late' : d.excused > 0 ? 'excused' : 'present'
-    return { date: d.date, status: worst as AttendanceStatus }
+    const total = d.present + d.absent + d.late + d.excused
+    const here = d.present + d.late
+    const percent = total ? (here / total) * 100 : 0
+    const status: AttendanceStatus = percent >= 95 ? 'present' : percent >= 85 ? 'late' : 'absent'
+    return { date: d.date, status }
   })
-  return <AttendanceCalendar month={month} onMonthChange={onMonthChange} days={days} />
+  return (
+    <>
+      <p className="mb-2 text-sm text-ink-500 dark:text-ink-300">{t('attendance.monthLegendClass')}</p>
+      <AttendanceCalendar month={month} onMonthChange={onMonthChange} days={days} />
+    </>
+  )
 }
 
 function StaffAttendance() {

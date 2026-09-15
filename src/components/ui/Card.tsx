@@ -42,12 +42,13 @@ export function StatCard({
         onClick ? 'transition-shadow hover:shadow-lift focus-ring w-full' : '',
       ].join(' ')}
     >
-      {icon && <span className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${tones[tone]}`}>{icon}</span>}
+      {icon && <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${tones[tone]}`}>{icon}</span>}
       <span className="min-w-0">
         <span className="block text-sm font-medium text-ink-500 dark:text-ink-300">{label}</span>
-        {/* Money values can be long (e.g. "93,600 LYD"); they wrap rather than
-            being clipped, because a half-shown figure is worse than none. */}
-        <span className="block text-2xl font-bold leading-tight [overflow-wrap:anywhere] xl:text-3xl">{value}</span>
+        {/* Default wrapping only ever breaks at the space before the currency,
+            so a figure like "109,600 LYD" can never be split mid-number — which
+            is what both `break-words` and `anywhere` did here. */}
+        <span className="block text-xl font-bold leading-tight xl:text-2xl">{value}</span>
         {hint && <span className="mt-0.5 block text-sm leading-snug text-ink-500 dark:text-ink-300">{hint}</span>}
       </span>
     </Tag>

@@ -295,7 +295,8 @@
     "emptyBody": "أضف طلاباً إلى هذا الصف أولاً.",
     "summaryLine": "{{present}} حاضر · {{absent}} غائب · {{late}} متأخر",
     "printSheet": "طباعة كشف الحضور",
-    "report": "تقرير الحضور"
+    "report": "تقرير الحضور",
+    "monthLegendClass": "يوضح اللون نسبة حضور الصف في ذلك اليوم."
   },
   "timetable": {
     "title": "الجدول الدراسي",

@@ -21,6 +21,13 @@ export function formatNumber(value: number | null | undefined, _lang: Language, 
   return toNumerals(new Intl.NumberFormat('en-GB').format(value), numerals)
 }
 
+/** Percentages are shown to one decimal place; "78.667%" reads as noise. */
+export function formatPercent(value: number | null | undefined, numerals = 'western'): string {
+  if (value === null || value === undefined || Number.isNaN(value)) return '—'
+  const rounded = Math.round(value * 10) / 10
+  return `${toNumerals(new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 }).format(rounded), numerals)}%`
+}
+
 export function formatMoney(value: number | null | undefined, currency: string, _lang: Language, numerals = 'western'): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '—'
   const num = new Intl.NumberFormat('en-GB', {

@@ -26,7 +26,8 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  icon: build/icon.ico
+  # electron-builder generates the .ico from this PNG (it must stay 256x256+).
+  icon: build/icon.png
   artifactName: ${productName}-Setup-${version}.${ext}
 
 nsis:
@@ -45,7 +46,8 @@ mac:
   target:
     - target: dmg
       arch: [x64, arm64]
-  icon: build/icon.icns
+  # electron-builder generates the .icns from this PNG.
+  icon: build/icon.png
   category: public.app-category.education
   artifactName: ${productName}-${version}-${arch}.${ext}
 

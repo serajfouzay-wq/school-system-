@@ -25,6 +25,10 @@ Demo sign-in: user `admin`, PIN `1234`.
 
 ### Building installers
 
+The Linux unpacked build and the resulting binary were verified to launch and
+create their database; the Windows and macOS targets are configured but have
+not been built here (they need their own host or a cross-build toolchain).
+
 ```bash
 npm run build       # typecheck + bundle
 npm run dist:win    # .exe   (NSIS installer)
@@ -123,8 +127,9 @@ the right one per language.
 
 ## Notes for whoever picks this up next
 
-- **`build/icon.png` is a placeholder.** Replace it with real branding, and add
-  `icon.ico` / `icon.icns` before shipping installers.
+- **`build/icon.png` is a placeholder.** Replace it with real branding before
+  shipping. electron-builder generates the Windows `.ico` and macOS `.icns`
+  from it, so one 512x512 PNG is all you need to swap.
 - **Auto-update is configured but not pointed anywhere.** `electron-builder.yml`
   has a `publish` block with a placeholder URL; set a real one and wire
   `electron-updater` in `main.ts` when you have somewhere to publish to.

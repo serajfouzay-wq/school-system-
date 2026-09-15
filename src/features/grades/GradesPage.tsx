@@ -13,7 +13,7 @@ import { PageHeader, FilterBar, Tabs } from '@/components/ui/PageHeader'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { ModuleTour } from '@/components/ui/Tour'
 import { sectionTitle } from '@/features/students/StudentWizard'
-import { localName, formatNumber } from '@/lib/format'
+import { localName, formatNumber, formatPercent } from '@/lib/format'
 import { usePrinting } from '@/lib/printing'
 import { reportCardHtml, reportCardsHtml } from '@/print/templates'
 
@@ -204,7 +204,7 @@ function GradeEntry({ terms }: { terms: ExamTerm[] }) {
                       </td>
                     ))}
                     <td className="p-3 text-center font-bold">
-                      {row.maxTotal ? `${formatNumber(row.percent, lang, numerals)}%` : '—'}
+                      {row.maxTotal ? formatPercent(row.percent, numerals) : '—'}
                     </td>
                     <td className="p-3 text-center">
                       {row.rank ? <StatusPill tone={row.rank <= 3 ? 'green' : 'grey'}>{formatNumber(row.rank, lang, numerals)}</StatusPill> : '—'}
@@ -316,7 +316,7 @@ function ReportCards({ terms }: { terms: ExamTerm[] }) {
                   <span className="block truncate text-sm text-ink-500 dark:text-ink-300">{row.student_code}</span>
                 </span>
                 <StatusPill tone={row.percent >= 50 ? 'green' : 'red'}>
-                  {row.maxTotal ? `${formatNumber(row.percent, lang, numerals)}%` : t('grades.noGradesYet')}
+                  {row.maxTotal ? formatPercent(row.percent, numerals) : t('grades.noGradesYet')}
                 </StatusPill>
                 {row.rank > 0 && <StatusPill tone="blue">{t('common.rank')}: {formatNumber(row.rank, lang, numerals)}</StatusPill>}
                 <span className="flex gap-2">

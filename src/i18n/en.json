@@ -295,7 +295,8 @@
     "emptyBody": "Add students to this class first.",
     "summaryLine": "{{present}} present · {{absent}} absent · {{late}} late",
     "printSheet": "Print the attendance sheet",
-    "report": "Attendance report"
+    "report": "Attendance report",
+    "monthLegendClass": "Colour shows how much of the class was here that day."
   },
   "timetable": {
     "title": "Timetable",
