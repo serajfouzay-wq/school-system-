@@ -12,7 +12,7 @@ import type { Role, User } from '@shared/types'
 import { assignableRoles, canActOnRole, can } from '@shared/permissions'
 import { Button, ChoiceCard } from '@/components/ui/Button'
 import { Card, CardTitle } from '@/components/ui/Card'
-import { Select, TextInput, Field, Toggle } from '@/components/ui/Field'
+import { Select, TextInput, Field, Toggle, PlainFields } from '@/components/ui/Field'
 import { Loading, StatusPill, EmptyState } from '@/components/ui/Feedback'
 import { PageHeader, Tabs } from '@/components/ui/PageHeader'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
@@ -97,6 +97,9 @@ function SchoolSettings() {
 
   return (
     <Card>
+      {/* The school's name is the only thing required; marking the other nine
+          boxes "(optional)" is noise on a screen people meet on day one. */}
+      <PlainFields>
       <div className="max-w-2xl space-y-4">
         <Field label={t('setup.logo')} hint={t('setup.logoHelp')}>
           <div className="flex items-center gap-4">
@@ -145,6 +148,7 @@ function SchoolSettings() {
           {t('settings.saveChanges')}
         </Button>
       </div>
+      </PlainFields>
     </Card>
   )
 }
