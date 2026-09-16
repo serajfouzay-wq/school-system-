@@ -705,7 +705,9 @@
     "digitalCount": "Readable on a phone",
     "unpaidFines": "Fines not paid",
     "student": "Student",
-    "staffMember": "Teacher or staff"
+    "staffMember": "Teacher or staff",
+    "shareScan": "Students point their phone camera at this",
+    "shareNoFiles": "No book has a file attached yet, so students would find the shelf empty. Open Books, edit a book and attach a PDF."
   },
   "transport": {
     "title": "Transport",

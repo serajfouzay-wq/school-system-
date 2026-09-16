@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import QRCode from 'qrcode'
 import {
   BookOpen, Plus, Pencil, Trash2, ArrowLeftRight, Wifi, WifiOff,
   Smartphone, AlertTriangle, CheckCircle2, FileText, Paperclip,
@@ -460,6 +461,8 @@ function ShareTab() {
   const setPreference = useApp((s) => s.setPreference)
   const [server, setServer] = useState<ServerStatus | null>(null)
   const { data: status } = useAsync(() => api.examServer.status(), [])
+  const { data: summary } = useAsync(() => api.library.summary(), [])
+  const qrRef = useRef<HTMLCanvasElement>(null)
 
   const shared = (preferences.library_share ?? 'off') === 'on'
   const current = server ?? status
@@ -473,17 +476,38 @@ function ShareTab() {
     }
   }
 
+  const address = current?.url ? `${current.url}/library` : null
+
+  // Typing an address into a phone is where this goes wrong, so give them
+  // something to point a camera at — the same thing the exam screen does.
+  useEffect(() => {
+    if (!shared || !address || !qrRef.current) return
+    QRCode.toCanvas(qrRef.current, address, { width: 190, margin: 1 }).catch(() => {})
+  }, [shared, address])
+
   return (
     <Card>
       <div className="max-w-2xl space-y-5">
         <Toggle checked={shared} onChange={(v) => void toggle(v)} label={t('library.shareOn')} hint={t('library.shareHelp')} />
 
-        {shared && current?.url ? (
+        {/* Sharing an empty shelf looks broken from a phone, so say so here. */}
+        {shared && summary && summary.digital === 0 && (
+          <div className="flex items-start gap-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+            <AlertTriangle size={22} className="shrink-0 text-amber-600" />
+            <p>{t('library.shareNoFiles')}</p>
+          </div>
+        )}
+
+        {shared && address ? (
           <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-950">
             <p className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-200">
               <Wifi size={20} /> {t('library.shareAddress')}
             </p>
-            <p className="mt-2 break-all text-2xl font-bold" dir="ltr">{current.url}/library</p>
+            <p className="mt-2 break-all text-2xl font-bold" dir="ltr">{address}</p>
+            <div className="mt-4 flex items-center gap-4">
+              <canvas ref={qrRef} className="rounded-xl bg-white p-2" />
+              <p className="text-sm text-ink-600 dark:text-ink-300">{t('library.shareScan')}</p>
+            </div>
           </div>
         ) : shared ? (
           <div className="flex items-center gap-3 rounded-xl border-2 border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">

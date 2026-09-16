@@ -48,7 +48,10 @@ export function libraryPage(): string {
     ar: { title:'مكتبة المدرسة', search:'ابحث عن كتاب', open:'افتح الكتاب',
           by:'تأليف', empty:'لا توجد كتب بعد. اسأل معلمك.', loading:'انتظر من فضلك…' }
   };
+  // Starts on the phone's language, then follows the school's once the first
+  // reply arrives — unless the reader has already pressed the toggle.
   var lang = (navigator.language || '').indexOf('ar') === 0 ? 'ar' : 'en';
+  var langChosen = false;
   var books = [], school = null;
 
   function esc(s) {
@@ -64,7 +67,7 @@ export function libraryPage(): string {
     var name = school ? ((lang === 'ar' && school.name_ar) ? school.name_ar : school.name) : '';
     document.getElementById('title').textContent = name || T[lang].title;
   }
-  window.__lang = function () { lang = lang === 'ar' ? 'en' : 'ar'; apply(); render(); };
+  window.__lang = function () { langChosen = true; lang = lang === 'ar' ? 'en' : 'ar'; apply(); render(); };
 
   function render() {
     var f = (document.getElementById('q').value || '').toLowerCase();
@@ -89,6 +92,7 @@ export function libraryPage(): string {
   fetch('/library/api/books').then(function (r) { return r.json(); }).then(function (j) {
     if (!j.ok) throw new Error(j.error);
     books = j.data.books; school = j.data.school;
+    if (!langChosen && j.data.language) lang = j.data.language;
     apply(); render();
   }).catch(function (e) {
     document.getElementById('list').innerHTML = '<div class="empty">' + esc(e.message) + '</div>';

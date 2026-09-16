@@ -232,6 +232,9 @@ export function start(desiredPort = 8080): Promise<ServerStatus> {
             ok: true,
             data: {
               school: { name: school?.name ?? '', name_ar: school?.name_ar ?? null },
+              // The school's own language wins over the phone's, the same way
+              // it does on every screen inside the building.
+              language: school?.language ?? 'en',
               books: books.map((b) => ({
                 id: b.id, title: b.title, title_ar: b.title_ar,
                 author: b.author, category: b.category, description: b.description,

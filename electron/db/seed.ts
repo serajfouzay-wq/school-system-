@@ -1,3 +1,6 @@
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { getDb } from './index'
 import { saveSchool, getSchool } from '../services/school'
 import { createUser, countUsers } from '../services/users'
@@ -10,7 +13,7 @@ import { saveFeeStructure, recordPayment } from '../services/fees'
 import { saveTimetableEntry, defaultPeriods } from '../services/timetable'
 import { saveAnnouncement, saveEvent } from '../services/communication'
 import { saveExam, saveQuestion } from '../services/exams'
-import { saveBook, borrow, returnBook } from '../services/library'
+import { saveBook, borrow, returnBook, attachFile } from '../services/library'
 import { saveRoute, addRider, recordPayment as recordBusPayment } from '../services/transport'
 
 /** Names are given in both scripts so every screen can be checked in Arabic. */
@@ -26,6 +29,40 @@ const LAST = [
   ['Al-Zawawi', 'الزواوي'], ['Gaddour', 'غدور'], ['Al-Fitouri', 'الفيتوري'], ['Shalabi', 'شلبي'],
   ['Abunawara', 'أبو نوارة', ], ['Elmahdi', 'المهدي'],
 ]
+
+/**
+ * A real, readable PDF so the demo's "read it on a phone" shelf is not empty.
+ * Written by hand rather than generated, because seeding must not need a
+ * browser window — it is one page of Helvetica, which every reader has.
+ */
+function demoBookPdf(title: string, lines: string[]): Buffer {
+  const esc = (t: string) => t.replace(/([\\\\()])/g, '\\$1')
+  const text =
+    `BT /F1 20 Tf 62 760 Td (${esc(title)}) Tj ET\n` +
+    lines
+      .map((line, i) => `BT /F1 12 Tf 62 ${716 - i * 20} Td (${esc(line)}) Tj ET`)
+      .join('\n')
+
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    `<< /Length ${Buffer.byteLength(text)} >>\nstream\n${text}\nendstream`,
+  ]
+
+  let pdf = '%PDF-1.4\n'
+  const offsets: number[] = []
+  objects.forEach((body, i) => {
+    offsets.push(Buffer.byteLength(pdf))
+    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`
+  })
+  const xref = Buffer.byteLength(pdf)
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+  for (const off of offsets) pdf += `${String(off).padStart(10, '0')} 00000 n \n`
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`
+  return Buffer.from(pdf, 'latin1')
+}
 
 function rand(n: number): number { return Math.floor(Math.random() * n) }
 function pick<T>(list: T[]): T { return list[rand(list.length)] }
@@ -284,6 +321,20 @@ export function seedDemoData(): void {
     const saved = demoBooks.map((b) =>
       saveBook({ title: b.title, title_ar: b.title_ar, author: b.author, category: b.category, shelf: b.shelf, copies_total: b.copies })
     )
+
+    // Two of them also exist as a file, so "share the library on the school
+    // Wi-Fi" has something on the shelf the first time anyone tries it.
+    for (const [index, lines] of [
+      [3, ['Water, air and light', '', 'Plants need three things to grow: water from the', 'soil, air around their leaves, and light from the sun.', '', 'Try it yourself: put one plant on a sunny windowsill', 'and another inside a dark cupboard. Give both the', 'same water. After one week, look at the leaves.']],
+      [5, ['The three root letters', '', 'Almost every Arabic word is built from three letters.', 'From k-t-b come kitab (a book), katib (a writer),', 'maktab (a desk) and maktaba (a library).', '', 'Once you can hear the three letters inside a word,', 'you can often guess what a new word means.']],
+    ] as [number, string[]][]) {
+      const book = saved[index]
+      // Named after the book, because the file name is what a student sees.
+      const tmp = path.join(os.tmpdir(), `${book.title.replace(/[^\w ]+/g, '').trim()}.pdf`)
+      fs.writeFileSync(tmp, demoBookPdf(book.title, lines))
+      attachFile(book.id, tmp)
+      fs.rmSync(tmp, { force: true })
+    }
     // A handful of loans: some out, some overdue, some already back.
     for (let i = 0; i < 14; i++) {
       const book = saved[rand(saved.length)]
