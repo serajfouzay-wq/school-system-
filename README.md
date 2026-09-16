@@ -25,10 +25,6 @@ Demo sign-in: user `admin`, PIN `1234`.
 
 ### Building installers
 
-The Linux unpacked build and the resulting binary were verified to launch and
-create their database; the Windows and macOS targets are configured but have
-not been built here (they need their own host or a cross-build toolchain).
-
 ```bash
 npm run build       # typecheck + bundle
 npm run dist:win    # .exe   (NSIS installer)
@@ -36,6 +32,27 @@ npm run dist:mac    # .dmg
 npm run dist:linux  # .AppImage and .deb
 npm run pack:dir    # unpacked build, for a quick local check
 ```
+
+**Build Windows on Windows.** The GitHub Actions workflow in
+`.github/workflows/build-windows.yml` does this: run it from the Actions tab,
+or push a `v*` tag to get a Release with the installer attached. It compiles
+`better-sqlite3` natively and stamps the icon into the `.exe`.
+
+Cross-building for Windows *from Linux* does work, with two compromises worth
+knowing about:
+
+- `@electron/rebuild` cannot compile `better-sqlite3` for Windows on a Linux
+  host and silently leaves the **Linux** binary in the package — an installer
+  that crashes the moment it opens the database. `build/after-pack.cjs`
+  detects this, substitutes the official prebuilt Windows binary, and fails
+  the build rather than let a broken package out.
+- Stamping the icon and version into the `.exe` runs `rcedit` under wine, so
+  `win.signAndEditExecutable` is off in the committed config. The app works;
+  it just wears the stock Electron icon. The Actions workflow overrides this
+  back to `true`.
+
+The Linux build was verified end to end here: the packaged binary launches and
+creates its database with `better-sqlite3` loaded from outside the asar.
 
 ---
 

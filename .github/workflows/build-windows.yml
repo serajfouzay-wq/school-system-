@@ -1,0 +1,72 @@
+name: Build Windows installer
+
+# Cross-building for Windows from Linux cannot compile better-sqlite3, so the
+# build there falls back to a downloaded prebuild and cannot stamp the .exe
+# icon (that needs wine). A Windows runner does both properly, so this is the
+# build to ship from.
+#
+# Run it from the Actions tab ("Run workflow"), or push a v* tag to get a
+# GitHub Release with the installer attached.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Compiles better-sqlite3 against this Electron version, on Windows.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck and bundle
+        run: npm run build
+
+      - name: Build installer
+        # signAndEditExecutable is off in the committed config so a Linux host
+        # can build at all; a Windows runner can do it properly.
+        run: npx electron-builder --win --x64 --publish never -c.win.signAndEditExecutable=true
+
+      - name: Check the installer really contains a Windows database engine
+        shell: pwsh
+        run: |
+          $node = "release/win-unpacked/resources/app.asar.unpacked/node_modules/better-sqlite3/build/Release/better_sqlite3.node"
+          if (-not (Test-Path $node)) { throw "better-sqlite3 binary is missing from the package" }
+          $bytes = [System.IO.File]::ReadAllBytes($node)
+          if ($bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw "better-sqlite3 binary is not a Windows DLL" }
+          Write-Host "better-sqlite3 is a native Windows build - OK"
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: School-System-Windows-Installer
+          path: |
+            release/*.exe
+            release/*.exe.blockmap
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach installer to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" release/*.exe \
+            --title "School System ${GITHUB_REF_NAME}" \
+            --notes "Windows installer. Double-click to install, then sign in with **admin** / **1234** if you load the example data." \
+            --clobber || gh release upload "${GITHUB_REF_NAME}" release/*.exe --clobber

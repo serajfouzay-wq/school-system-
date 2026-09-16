@@ -12,6 +12,10 @@ files:
   - package.json
   - "!**/*.map"
 
+# Swaps in the right native binary when cross-building, and fails the build
+# rather than shipping a package that cannot open its own database.
+afterPack: build/after-pack.cjs
+
 # better-sqlite3 is a native module and must ship unpacked so the .node binary
 # can be loaded from the installed app.
 asar: true
@@ -29,6 +33,10 @@ win:
   # electron-builder generates the .ico from this PNG (it must stay 256x256+).
   icon: build/icon.png
   artifactName: ${productName}-Setup-${version}.${ext}
+  # Stamping icon/version data into the .exe runs rcedit under wine, which a
+  # Linux build host does not have. A Windows runner sets this back to true;
+  # see .github/workflows/build-windows.yml.
+  signAndEditExecutable: false
 
 nsis:
   oneClick: false
