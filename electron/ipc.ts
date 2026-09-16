@@ -15,11 +15,15 @@ import * as dashboard from './services/dashboard'
 import * as exams from './services/exams'
 import * as examServer from './services/examServer'
 import * as whatsapp from './services/whatsapp'
+import * as library from './services/library'
+import * as transport from './services/transport'
 import * as recycle from './services/recycle'
 import * as backup from './services/backup'
 import { parseCsv, writeCsv } from './services/exporter'
 import { seedDemoData, isSeeded } from './db/seed'
 import { getDb } from './db/index'
+import { can } from '../shared/permissions'
+import type { Capability } from '../shared/permissions'
 
 /** The signed-in user, tracked in the main process so services can stamp
  *  "who did this" onto records without the renderer being able to spoof it. */
@@ -55,6 +59,218 @@ function printableWindow(html: string): Promise<Buffer> {
   })
 }
 
+
+/**
+ * What each action requires. A method missing from this table is refused for
+ * everyone except the owner — a new handler added later fails closed rather
+ * than silently becoming public.
+ */
+const REQUIRED: Record<string, Capability | 'public'> = {
+  'session.setUser': 'public',
+  'session.currentUser': 'public',
+  'school.get': 'public',
+  'school.isSetupComplete': 'public',
+  'school.preferences': 'public',
+  'school.setPreference': 'public',
+  'auth.login': 'public',
+  'auth.signInList': 'public',
+  'auth.logout': 'public',
+  'auth.securityQuestion': 'public',
+  'auth.resetPin': 'public',
+  'app.version': 'public',
+  'app.dataFolder': 'public',
+  'files.readImage': 'public',
+  'demo.isSeeded': 'public',
+
+  'school.save': 'school.settings',
+  'demo.seed': 'school.dangerZone',
+
+  'users.list': 'users.view',
+  'users.count': 'public',
+  'users.create': 'users.manage',
+  'users.update': 'users.manage',
+  'users.delete': 'users.manage',
+
+  'classes.list': 'academics.view',
+  'sections.list': 'academics.view',
+  'subjects.list': 'academics.view',
+  'terms.list': 'academics.view',
+  'assignments.list': 'academics.view',
+  'classes.save': 'academics.manage',
+  'classes.delete': 'academics.manage',
+  'sections.save': 'academics.manage',
+  'sections.delete': 'academics.manage',
+  'subjects.save': 'academics.manage',
+  'subjects.delete': 'academics.manage',
+  'terms.save': 'academics.manage',
+  'terms.delete': 'academics.manage',
+  'assignments.save': 'academics.manage',
+  'assignments.delete': 'academics.manage',
+
+  'students.list': 'students.view',
+  'students.get': 'students.view',
+  'students.profile': 'students.view',
+  'students.nextCode': 'students.view',
+  'students.save': 'students.manage',
+  'students.delete': 'students.manage',
+  'students.setStatus': 'students.manage',
+  'students.move': 'students.manage',
+  'students.addNote': 'students.manage',
+  'students.deleteNote': 'students.manage',
+  'students.addDocument': 'students.manage',
+  'students.deleteDocument': 'students.manage',
+  'students.import': 'students.manage',
+
+  'staff.list': 'staff.view',
+  'staff.get': 'staff.view',
+  'staff.save': 'staff.manage',
+  'staff.delete': 'staff.manage',
+
+  'attendance.section': 'attendance.view',
+  'attendance.studentMonth': 'attendance.view',
+  'attendance.sectionMonth': 'attendance.view',
+  'attendance.report': 'attendance.view',
+  'attendance.staffDay': 'attendance.view',
+  'attendance.save': 'attendance.manage',
+  'attendance.saveStaff': 'attendance.manage',
+
+  'grades.grid': 'grades.view',
+  'grades.subjectsForSection': 'grades.view',
+  'grades.reportCard': 'grades.view',
+  'grades.save': 'grades.manage',
+  'grades.saveRemarks': 'grades.manage',
+
+  'exams.list': 'exams.view',
+  'exams.get': 'exams.view',
+  'exams.questions': 'exams.view',
+  'exams.attempts': 'exams.view',
+  'exams.attemptDetail': 'exams.view',
+  'exams.activeSession': 'exams.view',
+  'exams.save': 'exams.manage',
+  'exams.delete': 'exams.manage',
+  'exams.saveQuestion': 'exams.manage',
+  'exams.deleteQuestion': 'exams.manage',
+  'exams.reorderQuestions': 'exams.manage',
+  'exams.openSession': 'exams.manage',
+  'exams.closeSession': 'exams.manage',
+  'exams.overrideAnswer': 'exams.manage',
+  'exams.remark': 'exams.manage',
+  'exams.pushToGrades': 'exams.manage',
+  'examServer.status': 'exams.view',
+  'examServer.start': 'exams.manage',
+  'examServer.stop': 'exams.manage',
+
+  'fees.structures': 'fees.view',
+  'fees.payments': 'fees.view',
+  'fees.balances': 'fees.view',
+  'fees.studentSummary': 'fees.view',
+  'fees.receipt': 'fees.view',
+  'fees.summary': 'fees.view',
+  'fees.saveStructure': 'fees.manage',
+  'fees.deleteStructure': 'fees.manage',
+  'fees.recordPayment': 'fees.manage',
+  'fees.deletePayment': 'fees.manage',
+
+  'timetable.list': 'timetable.view',
+  'timetable.periods': 'timetable.view',
+  'timetable.conflicts': 'timetable.view',
+  'timetable.save': 'timetable.manage',
+  'timetable.delete': 'timetable.manage',
+
+  'announcements.list': 'announcements.view',
+  'events.list': 'announcements.view',
+  'announcements.save': 'announcements.manage',
+  'announcements.delete': 'announcements.manage',
+  'events.save': 'announcements.manage',
+  'events.delete': 'announcements.manage',
+
+  'whatsapp.feeDebtors': 'messages.send',
+  'whatsapp.absentToday': 'messages.send',
+  'whatsapp.oneStudent': 'messages.send',
+  'whatsapp.prepare': 'messages.send',
+  'whatsapp.send': 'messages.send',
+  'whatsapp.contactedToday': 'messages.send',
+  'whatsapp.history': 'messages.send',
+  'whatsapp.template': 'messages.send',
+  'whatsapp.countryCode': 'messages.send',
+
+  'library.books': 'library.view',
+  'library.book': 'library.view',
+  'library.categories': 'library.view',
+  'library.loans': 'library.view',
+  'library.summary': 'library.view',
+  'library.settings': 'library.view',
+  'library.borrow': 'library.lend',
+  'library.return': 'library.lend',
+  'library.payFine': 'library.lend',
+  'library.saveBook': 'library.manage',
+  'library.deleteBook': 'library.manage',
+  'library.attachFile': 'library.manage',
+  'library.removeFile': 'library.manage',
+  'library.deleteLoan': 'library.manage',
+
+  'transport.routes': 'transport.view',
+  'transport.route': 'transport.view',
+  'transport.riders': 'transport.view',
+  'transport.payments': 'transport.view',
+  'transport.summary': 'transport.view',
+  'transport.saveRoute': 'transport.manage',
+  'transport.deleteRoute': 'transport.manage',
+  'transport.addRider': 'transport.manage',
+  'transport.updateRider': 'transport.manage',
+  'transport.endRide': 'transport.manage',
+  'transport.removeRider': 'transport.manage',
+  'transport.recordPayment': 'transport.manage',
+  'transport.deletePayment': 'transport.manage',
+
+  'dashboard.summary': 'public',
+  'search.global': 'public',
+
+  'recycle.list': 'recycle.view',
+  'recycle.restore': 'recycle.restore',
+  'recycle.purgeExpired': 'recycle.restore',
+
+  'backup.status': 'school.backup',
+  'backup.list': 'school.backup',
+  'backup.create': 'school.backup',
+  'backup.setAuto': 'school.backup',
+  'backup.chooseAndCopy': 'school.backup',
+  'backup.restore': 'school.restore',
+  'backup.chooseAndRestore': 'school.restore',
+
+  'files.pickImage': 'public',
+  'files.pickAny': 'public',
+  'files.pickCsv': 'students.manage',
+  'files.saveStudentPhoto': 'students.manage',
+  'files.saveStaffPhoto': 'staff.manage',
+  'files.saveLogo': 'school.settings',
+  'files.openFolder': 'school.backup',
+  'files.showItem': 'public',
+
+  'export.csv': 'reports.view',
+  'print.html': 'reports.view',
+  'print.pdf': 'reports.view',
+}
+
+/** True only on a brand-new machine, where nobody has been created yet. */
+function setupOpen(): boolean {
+  try {
+    return users.countUsers() === 0
+  } catch {
+    // No database yet at all — that is as unclaimed as it gets.
+    return true
+  }
+}
+
+/** The role of whoever is signed in, read fresh from the database each time. */
+function currentRole(): string | null {
+  if (!currentUserId) return null
+  const row = getDb().prepare(`SELECT role, is_active FROM users WHERE id = ? AND deleted_at IS NULL`).get(currentUserId) as
+    | { role: string; is_active: number }
+    | undefined
+  return row?.is_active ? row.role : null
+}
+
 const handlers: Record<string, Handler> = {
   /* ---- session ---- */
   'session.setUser': ({ userId }) => { currentUserId = userId ?? null; return true },
@@ -70,9 +286,10 @@ const handlers: Record<string, Handler> = {
   /* ---- users & auth ---- */
   'users.list': (p) => users.listUsers(p?.includeInactive ?? true),
   'users.count': () => users.countUsers(),
-  'users.create': (p) => users.createUser(p),
-  'users.update': ({ id, ...patch }) => users.updateUser(id, patch),
+  'users.create': (p) => users.createUser(p, currentUserId),
+  'users.update': ({ id, ...patch }) => users.updateUser(id, patch, currentUserId),
   'users.delete': ({ id }) => { users.deleteUser(id, currentUserId); return true },
+  'auth.signInList': () => users.signInList(),
   'auth.login': ({ username, pin }) => {
     const u = users.login(username, pin)
     currentUserId = u.id
@@ -200,6 +417,37 @@ const handlers: Record<string, Handler> = {
   'whatsapp.history': ({ studentId }) => whatsapp.history(studentId),
   'whatsapp.template': ({ purpose, lang }) => whatsapp.getTemplate(purpose, lang),
   'whatsapp.countryCode': () => whatsapp.countryCode(),
+
+  /* ---- library ---- */
+  'library.books': (p) => library.listBooks(p ?? {}),
+  'library.book': ({ id }) => library.getBook(id),
+  'library.categories': () => library.categories(),
+  'library.saveBook': (p) => library.saveBook(p),
+  'library.deleteBook': ({ id }) => { library.deleteBook(id, currentUserId); return true },
+  'library.attachFile': ({ bookId, sourcePath }) => library.attachFile(bookId, sourcePath),
+  'library.removeFile': ({ bookId }) => library.removeFile(bookId),
+  'library.loans': (p) => library.listLoans(p ?? {}),
+  'library.borrow': (p) => library.borrow(p, currentUserId),
+  'library.return': ({ loanId }) => library.returnBook(loanId),
+  'library.payFine': ({ loanId }) => { library.payFine(loanId); return true },
+  'library.deleteLoan': ({ id }) => { library.deleteLoan(id, currentUserId); return true },
+  'library.summary': () => library.summary(),
+  'library.settings': () => ({ loanDays: library.loanDays(), finePerDay: library.finePerDay() }),
+
+  /* ---- transport ---- */
+  'transport.routes': () => transport.listRoutes(),
+  'transport.route': ({ id }) => transport.getRoute(id),
+  'transport.saveRoute': (p) => transport.saveRoute(p),
+  'transport.deleteRoute': ({ id }) => { transport.deleteRoute(id, currentUserId); return true },
+  'transport.riders': (p) => transport.listRiders(p ?? {}),
+  'transport.addRider': (p) => transport.addRider(p),
+  'transport.updateRider': ({ id, ...patch }) => { transport.updateRider(id, patch); return true },
+  'transport.endRide': ({ id }) => { transport.endRide(id); return true },
+  'transport.removeRider': ({ id }) => { transport.removeRider(id, currentUserId); return true },
+  'transport.payments': ({ riderId }) => transport.listPayments(riderId),
+  'transport.recordPayment': (p) => transport.recordPayment(p, currentUserId),
+  'transport.deletePayment': ({ id }) => { transport.deletePayment(id, currentUserId); return true },
+  'transport.summary': () => transport.summary(),
 
   /* ---- dashboard & search ---- */
   'dashboard.summary': () => dashboard.dashboardSummary(),
@@ -333,6 +581,25 @@ export function registerIpc(): void {
   ipcMain.handle('api:call', async (_event, method: string, payload: unknown) => {
     const handler = handlers[method]
     if (!handler) return { ok: false, error: `Unknown action: ${method}` }
+
+    const needed = REQUIRED[method]
+    // Before the first account exists the school is unclaimed and the setup
+    // wizard is the only thing running, so it may do what it needs to. The
+    // moment an owner exists this closes for good.
+    if (needed !== 'public' && !setupOpen()) {
+      const role = currentRole()
+      // Unlisted actions fall through to owner-only rather than wide open.
+      const allowed = needed ? can(role as never, needed) : role === 'owner'
+      if (!allowed) {
+        return {
+          ok: false,
+          error: role
+            ? 'Your account is not allowed to do this. Ask the school owner or an administrator.'
+            : 'Please sign in first.',
+        }
+      }
+    }
+
     try {
       const data = await handler(payload ?? {})
       return { ok: true, data }

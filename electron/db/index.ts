@@ -37,7 +37,65 @@ export function getDb(): Database.Database {
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
   db.exec(schemaSql)
+  addMissingColumns(db)
   return db
+}
+
+/**
+ * `CREATE TABLE IF NOT EXISTS` creates new tables but never updates old ones,
+ * so a school that has been running since an earlier version would be missing
+ * any column added since — and the first query touching it would fail with
+ * "no such column". This reads the columns the schema asks for, compares them
+ * with what the file actually has, and adds what is missing.
+ *
+ * Only columns SQLite can add to a populated table are handled: nullable, or
+ * carrying a constant default. Anything else is left alone and reported, since
+ * guessing a value for existing rows is not this function's decision to make.
+ */
+function addMissingColumns(conn: Database.Database): void {
+  // Strip comments first, so a column name inside one is never mistaken for a
+  // real definition.
+  const sql = schemaSql.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--[^\n]*/g, '')
+
+  for (const table of sql.matchAll(/CREATE TABLE IF NOT EXISTS\s+(\w+)\s*\(([\s\S]*?)\n\);/g)) {
+    const [, name, body] = table
+
+    let present: Set<string>
+    try {
+      const info = conn.prepare(`PRAGMA table_info(${name})`).all() as { name: string }[]
+      if (!info.length) continue
+      present = new Set(info.map((c) => c.name))
+    } catch {
+      continue
+    }
+
+    // One definition per line is the house style throughout schema.sql.
+    for (const raw of body.split('\n')) {
+      const line = raw.trim().replace(/,$/, '')
+      if (!line) continue
+      const column = /^(\w+)\s+(TEXT|INTEGER|REAL|BLOB|NUMERIC)\b(.*)$/i.exec(line)
+      if (!column) continue                       // table constraint, not a column
+      const [, columnName, type, rest] = column
+      if (present.has(columnName)) continue
+      if (/PRIMARY KEY|UNIQUE/i.test(rest)) continue
+      if (/NOT NULL/i.test(rest) && !/DEFAULT/i.test(rest)) {
+        console.warn(`[db] ${name}.${columnName} cannot be added to an existing table; skipped.`)
+        continue
+      }
+      // A non-constant default (datetime('now')) is rejected by ALTER TABLE.
+      const safe = /NOT NULL/i.test(rest) && /DEFAULT\s*\(/.test(rest) ? null : rest
+      if (safe === null) {
+        console.warn(`[db] ${name}.${columnName} has a computed default; skipped.`)
+        continue
+      }
+      try {
+        conn.exec(`ALTER TABLE ${name} ADD COLUMN ${columnName} ${type} ${safe}`.trim())
+        console.log(`[db] added missing column ${name}.${columnName}`)
+      } catch (e) {
+        console.warn(`[db] could not add ${name}.${columnName}:`, (e as Error).message)
+      }
+    }
+  }
 }
 
 /** Close the handle so the file can be copied/replaced safely. */
@@ -76,6 +134,9 @@ const SOFT_DELETE_TABLES = new Set([
   'fee_structures', 'fee_payments', 'timetable_entries',
   'announcements', 'calendar_events', 'student_notes',
   'student_documents', 'teacher_assignments',
+  'exams', 'exam_questions', 'exam_sessions', 'exam_attempts',
+  'library_books', 'library_loans',
+  'transport_routes', 'transport_riders', 'transport_payments',
 ])
 
 /**

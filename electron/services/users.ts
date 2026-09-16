@@ -1,5 +1,6 @@
 import { getDb, hashSecret, verifySecret, softDelete } from '../db/index'
 import type { Role, User } from '../../shared/types'
+import { canActOnRole } from '../../shared/permissions'
 
 const PUBLIC_COLS = `id, name, username, role, staff_id, security_question, is_active, created_at`
 
@@ -8,6 +9,17 @@ export function listUsers(includeInactive = true): User[] {
   return getDb()
     .prepare(`SELECT ${PUBLIC_COLS} FROM users WHERE deleted_at IS NULL ${where} ORDER BY name`)
     .all() as User[]
+}
+
+/**
+ * The sign-in picker, and nothing more. This is the one list an unauthenticated
+ * caller may read, so it carries only what a name badge needs — no security
+ * question, no dates, no inactive accounts.
+ */
+export function signInList(): Pick<User, 'id' | 'name' | 'username' | 'role' | 'staff_id'>[] {
+  return getDb()
+    .prepare(`SELECT id, name, username, role, staff_id FROM users WHERE deleted_at IS NULL AND is_active = 1 ORDER BY name`)
+    .all() as Pick<User, 'id' | 'name' | 'username' | 'role' | 'staff_id'>[]
 }
 
 export function countUsers(): number {
@@ -25,8 +37,31 @@ export interface CreateUserInput {
   security_answer?: string | null
 }
 
-export function createUser(input: CreateUserInput): User {
+function roleOf(userId: number | null): Role | null {
+  if (!userId) return null
+  const row = getDb().prepare(`SELECT role FROM users WHERE id = ? AND deleted_at IS NULL`).get(userId) as
+    | { role: Role }
+    | undefined
+  return row?.role ?? null
+}
+
+/**
+ * Nobody may create or change an account that outranks them, and nobody may
+ * promote anyone above themselves — which is what stops an administrator
+ * quietly turning their own account into the owner.
+ */
+function assertMayActOn(actingUserId: number | null, targetRole: Role): void {
+  // The very first account is created before anyone is signed in.
+  if (countUsers() === 0) return
+  const actor = roleOf(actingUserId)
+  if (!canActOnRole(actor, targetRole)) {
+    throw new Error('Your account is not allowed to manage this kind of user.')
+  }
+}
+
+export function createUser(input: CreateUserInput, actingUserId: number | null = null): User {
   const d = getDb()
+  assertMayActOn(actingUserId, input.role)
   const username = input.username.trim().toLowerCase()
   if (!username) throw new Error('A username is required.')
   if (!/^\d{4,8}$/.test(input.pin)) throw new Error('The PIN must be 4 to 8 digits.')
@@ -59,8 +94,28 @@ export function getUser(id: number): User | null {
   return (getDb().prepare(`SELECT ${PUBLIC_COLS} FROM users WHERE id = ?`).get(id) as User) ?? null
 }
 
-export function updateUser(id: number, patch: Partial<CreateUserInput> & { is_active?: 0 | 1 }): User {
+export function updateUser(
+  id: number,
+  patch: Partial<CreateUserInput> & { is_active?: 0 | 1 },
+  actingUserId: number | null = null
+): User {
   const d = getDb()
+  const existing = getUser(id)
+  if (!existing) throw new Error('That user could not be found.')
+  // Both the account as it stands and the role being asked for are checked,
+  // so nobody can edit upwards in either direction.
+  assertMayActOn(actingUserId, existing.role)
+  if (patch.role && patch.role !== existing.role) assertMayActOn(actingUserId, patch.role)
+
+  if (existing.role === 'owner') {
+    const owners = d
+      .prepare(`SELECT COUNT(*) AS n FROM users WHERE role = 'owner' AND is_active = 1 AND deleted_at IS NULL`)
+      .get() as { n: number }
+    const losingOwner = (patch.role && patch.role !== 'owner') || patch.is_active === 0
+    if (owners.n <= 1 && losingOwner) {
+      throw new Error('This is the only owner account. Make another account the owner first.')
+    }
+  }
   const sets: string[] = []
   const params: Record<string, unknown> = { id }
   if (patch.name !== undefined) { sets.push('name = @name'); params.name = patch.name.trim() }
@@ -86,15 +141,28 @@ export function updateUser(id: number, patch: Partial<CreateUserInput> & { is_ac
 }
 
 export function deleteUser(id: number, actingUserId: number | null): void {
-  const admins = getDb()
-    .prepare(`SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND is_active = 1 AND deleted_at IS NULL`)
-    .get() as { n: number }
   const target = getUser(id)
-  if (target?.role === 'admin' && admins.n <= 1) {
-    throw new Error('This is the only administrator. Add another administrator before removing this one.')
+  if (!target) throw new Error('That user could not be found.')
+  assertMayActOn(actingUserId, target.role)
+  if (id === actingUserId) throw new Error('You cannot remove the account you are signed in with.')
+
+  // The school must never be left with no way in.
+  const survivors = getDb()
+    .prepare(
+      `SELECT COUNT(*) AS n FROM users
+        WHERE role = ? AND is_active = 1 AND deleted_at IS NULL AND id <> ?`
+    )
+    .get(target.role, id) as { n: number }
+  if ((target.role === 'owner' || target.role === 'admin') && survivors.n === 0) {
+    throw new Error(
+      target.role === 'owner'
+        ? 'This is the only owner account. Make another account the owner before removing this one.'
+        : 'This is the only administrator. Add another administrator before removing this one.'
+    )
   }
   softDelete('users', id, target ? `${target.name} (user)` : `User #${id}`, actingUserId)
 }
+
 
 export function login(username: string, pin: string): User {
   const row = getDb()

@@ -205,7 +205,7 @@ function Balances() {
             value={classId}
             onChange={(e) => setClassId(e.target.value)}
             placeholder={t('common.all')}
-            options={(classes ?? []).map((c) => ({ value: c.id, label: localName(c as unknown as Record<string, unknown>, lang) }))}
+            options={(classes ?? []).map((c) => ({ value: c.id, label: localName(c, lang) }))}
           />
         </div>
         <div className="min-w-[16rem]">
@@ -419,7 +419,7 @@ function PaymentDialog({
           placeholder={t('common.none')}
           options={(structures ?? []).map((s) => ({
             value: s.id,
-            label: `${localName(s as unknown as Record<string, unknown>, lang, 'item_name')} — ${formatMoney(s.amount, currency, lang, numerals)}`,
+            label: `${localName(s, lang, 'item_name')} — ${formatMoney(s.amount, currency, lang, numerals)}`,
           }))}
         />
         <TextArea label={t('common.notes')} rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
@@ -576,7 +576,7 @@ function Structures() {
             {data.map((f) => (
               <li key={f.id} className="flex flex-wrap items-center gap-3 border-b p-4 last:border-0" style={{ borderColor: 'var(--app-border)' }}>
                 <span className="min-w-[10rem] flex-1">
-                  <span className="block font-bold">{localName(f as unknown as Record<string, unknown>, lang, 'item_name')}</span>
+                  <span className="block font-bold">{localName(f, lang, 'item_name')}</span>
                   <span className="block text-sm text-ink-500 dark:text-ink-300">
                     {f.class_name ?? t('fees.allClasses')}{f.term ? ` · ${f.term}` : ''}
                   </span>
@@ -680,7 +680,7 @@ function StructureEditor({
             value={classId}
             onChange={(e) => setClassId(e.target.value)}
             placeholder={t('fees.allClasses')}
-            options={(classes ?? []).map((c) => ({ value: c.id, label: localName(c as unknown as Record<string, unknown>, lang) }))}
+            options={(classes ?? []).map((c) => ({ value: c.id, label: localName(c, lang) }))}
           />
           <TextInput label={t('fees.term')} value={term} onChange={(e) => setTerm(e.target.value)} />
         </div>

@@ -9,6 +9,14 @@ import { useTranslation } from 'react-i18next'
  */
 export const PlainFieldsContext = createContext(false)
 
+/**
+ * Turns off the "(optional)" marker for everything inside. Use it where nearly
+ * every box is optional and the red * on the one required field says enough.
+ */
+export function PlainFields({ children }: { children: ReactNode }) {
+  return <PlainFieldsContext.Provider value={true}>{children}</PlainFieldsContext.Provider>
+}
+
 const CONTROL =
   'surface w-full min-h-touch rounded-xl border px-3 py-2 text-base focus-ring ' +
   'placeholder:text-ink-400 disabled:opacity-60 text-start'
@@ -122,6 +130,7 @@ export function Toggle({
   label: ReactNode
   hint?: ReactNode
 }) {
+  const { t } = useTranslation()
   return (
     <button
       type="button"
@@ -147,7 +156,7 @@ export function Toggle({
       </span>
       {/* Never colour alone: the state is spelled out as well. */}
       <span className="shrink-0 text-sm font-semibold text-ink-500 dark:text-ink-300">
-        {checked ? 'ON' : 'OFF'}
+        {checked ? t('common.on') : t('common.off')}
       </span>
     </button>
   )

@@ -4,6 +4,11 @@ import { getDb } from '../db/index'
 import { getSchool } from './school'
 import { sessionByCode, listQuestions, getExam, markAttempt } from './exams'
 import { studentPage } from './examStudentPage'
+import { libraryPage } from './libraryPage'
+import { listBooks, getBook } from './library'
+import fs from 'node:fs'
+import path from 'node:path'
+import { getSetting } from '../db/index'
 
 /**
  * A small web server on the school's own network. Students open it on their
@@ -208,6 +213,56 @@ export function start(desiredPort = 8080): Promise<ServerStatus> {
       }
       if (req.method === 'GET' && url.pathname === '/api/ping') {
         return send(res, 200, { ok: true })
+      }
+
+      /* ---- Digital library, on the same network as the exams ---- */
+      if (url.pathname.startsWith('/library')) {
+        // The library is only reachable when the school has switched it on.
+        if ((getSetting('library_share') ?? 'off') !== 'on') {
+          return send(res, 403, { ok: false, error: 'The library is not being shared right now.' })
+        }
+
+        if (req.method === 'GET' && url.pathname === '/library') {
+          return send(res, 200, libraryPage(), 'text/html')
+        }
+        if (req.method === 'GET' && url.pathname === '/library/api/books') {
+          const school = getSchool()
+          const books = listBooks({ search: url.searchParams.get('q') ?? undefined, onlyDigital: true })
+          return send(res, 200, {
+            ok: true,
+            data: {
+              school: { name: school?.name ?? '', name_ar: school?.name_ar ?? null },
+              books: books.map((b) => ({
+                id: b.id, title: b.title, title_ar: b.title_ar,
+                author: b.author, category: b.category, description: b.description,
+                file_name: b.file_name,
+              })),
+            },
+          })
+        }
+        if (req.method === 'GET' && url.pathname.startsWith('/library/file/')) {
+          const id = Number(url.pathname.split('/').pop())
+          const book = getBook(id)
+          if (!book?.file_path || !fs.existsSync(book.file_path)) {
+            return send(res, 404, { ok: false, error: 'That book is not available.' })
+          }
+          const ext = path.extname(book.file_path).toLowerCase()
+          const types: Record<string, string> = {
+            '.pdf': 'application/pdf', '.epub': 'application/epub+zip',
+            '.txt': 'text/plain', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+          }
+          const stat = fs.statSync(book.file_path)
+          res.writeHead(200, {
+            'Content-Type': types[ext] ?? 'application/octet-stream',
+            'Content-Length': stat.size,
+            // `inline` lets a phone open a PDF in the browser instead of
+            // forcing a download the student then cannot find.
+            'Content-Disposition': `inline; filename="${encodeURIComponent(book.file_name ?? 'book')}"`,
+            'Cache-Control': 'no-store',
+          })
+          return fs.createReadStream(book.file_path).pipe(res)
+        }
+        return send(res, 404, { ok: false, error: 'Not found' })
       }
       if (req.method === 'GET' && url.pathname === '/api/students') {
         return send(res, 200, { ok: true, data: handleStudents(url.searchParams.get('code') ?? '') })

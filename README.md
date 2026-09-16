@@ -21,7 +21,15 @@ the wizard's first step offers **"Try it with example data"**, which fills the
 system with a fictional school (roughly 180 students across 5 grades, with
 attendance, grades, fees and timetables already in place).
 
-Demo sign-in: user `admin`, PIN `1234`.
+Demo sign-in — five accounts, one per job:
+
+| User | PIN | Role | What they can do |
+|---|---|---|---|
+| `owner` | `0000` | Owner | Everything, including creating other owners and loading demo data |
+| `admin` | `1234` | Administrator | Everything day to day; cannot promote anyone to owner |
+| `clerk` | `1111` | Registrar | Students, classes, attendance, timetable, transport, lending books |
+| `accounts` | `2222` | Accountant | Fees and transport money |
+| `nadia` | `3333` | Teacher | Attendance, grades, exams, lending books — read-only elsewhere |
 
 ### Building installers
 
@@ -87,16 +95,21 @@ electron/                  Main process — owns the database, nothing else can 
     attendance.ts  grades.ts  fees.ts  timetable.ts
     communication.ts  dashboard.ts  recycle.ts  backup.ts  exporter.ts
     exams.ts               Exam papers, auto-marking, results into Grades
-    examServer.ts          The LAN web server students' phones connect to
+    examServer.ts          The LAN web server phones connect to (exams + library)
     examStudentPage.ts     The page those phones load, as one self-contained file
+    libraryPage.ts         The reading page, likewise
     whatsapp.ts            Message building, phone normalising, send log
-  ipc.ts                   Every action the renderer may call, by name
+    library.ts             Books, loans, fines
+    transport.ts           Bus routes, drivers, riders, bus money
+  ipc.ts                   Every action the renderer may call, by name,
+                           each one mapped to the capability it requires
   main.ts / preload.ts     Window, menu, and the single contextBridge
 
 shared/types.ts            Types used by both processes
+shared/permissions.ts      Roles, capabilities, and who may act on whom
 
 src/                       Renderer — React, no filesystem or database access
-  i18n/                    en.json / ar.json (511 keys, generated in lockstep)
+  i18n/                    en.json / ar.json (709 keys, generated in lockstep)
   lib/                     api client, formatting, printing, hooks
   store/app.ts             Zustand: session, language, preferences, toasts
   components/ui/           Button, Card, Field, Modal, DataTable, Wizard, …
@@ -104,7 +117,7 @@ src/                       Renderer — React, no filesystem or database access
   features/                One folder per module
     setup/ auth/ dashboard/ students/ staff/ academics/
     attendance/ timetable/ grades/ exams/ fees/ communication/
-    reports/ settings/ recycle/ help/
+    library/ transport/ reports/ settings/ recycle/ help/
   print/                   Report cards, receipts, ID cards, reports (HTML → PDF)
   assets/fonts/            Cairo, bundled so Arabic works with no internet
 ```
@@ -112,6 +125,13 @@ src/                       Renderer — React, no filesystem or database access
 The renderer has **no Node access at all**. Every read and write goes through a
 named action in `electron/ipc.ts`, which the main process validates. Photos are
 handed back as data URLs rather than file paths.
+
+Adding a table to `schema.sql` is enough; adding a **column** to an existing one
+is too, because `CREATE TABLE IF NOT EXISTS` never updates a table that already
+exists. `addMissingColumns()` in `db/index.ts` compares the schema with the file
+on disk at every open and adds what is missing, so a school that has been
+running since an earlier version is not left with a database the new code cannot
+query.
 
 ---
 
@@ -143,6 +163,62 @@ carry `.flip-rtl`.
 Arabic text is stored in dedicated `*_ar` columns alongside the Latin ones, so a
 student can be searched and sorted in either script, and printed documents pick
 the right one per language.
+
+---
+
+## Who can do what
+
+Roles used to be labels; they are now enforced. Every action the renderer can
+call is mapped to a capability in `shared/permissions.ts`, and the main process
+checks it before doing anything. The interface hides what you cannot do, but
+hiding is only a courtesy — the check in the main process is what protects the
+data, and it **fails closed**: an action nobody thought to map is owner-only
+rather than open to everyone.
+
+**The owner is the school's own account.** It outranks everything, and it is the
+only role that can create another owner or touch the danger zone (loading demo
+data, anything that rewrites the whole database). The first account made in the
+setup wizard is the owner.
+
+Nobody can act on an account that outranks them, and nobody can promote anyone
+above themselves — which is what stops an administrator quietly making
+themselves the owner. The last owner cannot be deleted, demoted or deactivated,
+and nobody can delete their own account.
+
+Before the first account exists the school is unclaimed and the setup wizard may
+do what it needs to; the moment an owner exists, that closes for good. The
+sign-in picker reads a deliberately minimal list (`auth.signInList`) — names and
+roles, nothing else — because it has to work before anyone has signed in.
+
+---
+
+## The library
+
+Two things under one roof:
+
+- **Books to lend.** Copies, who has them, when they are due, and the fine if
+  they come back late. The fine per day and the loan length live in Settings.
+  A book cannot be deleted while copies are out, and one person cannot hold two
+  copies of the same title.
+- **Books to read on a phone.** Attach a PDF to a book and turn on *Share the
+  library on the school Wi-Fi*, and students can open it on their own phones
+  from inside the school — the same LAN server the exams use, so there is
+  nothing extra to set up and still no internet involved. Sharing is off until
+  someone turns it on.
+
+## Transport
+
+Bus routes with the driver's name (in both scripts), phone, helper, vehicle,
+seats, morning and afternoon times, and the stops along the way. Students are
+put on a route with their pickup point and whether they ride in the morning, the
+afternoon, or both — the bus refuses a rider past its seat count, and refuses to
+put a child on two buses at once.
+
+Bus money is kept **apart from school fees**, so neither report can quietly
+swallow the other. Each payment gets its own receipt number (`T-2026-00001`) and
+prints a receipt on the spot; the list reprints one for a parent who lost theirs.
+*Who has not paid* feeds straight into the WhatsApp queue, and the driver's sheet
+— who gets on, where, and the guardian's number — prints for the bus itself.
 
 ---
 
@@ -196,8 +272,6 @@ converted to international form using the country code in Settings.
   `electron-updater` in `main.ts` when you have somewhere to publish to.
 - **Excel export is CSV** (with a UTF-8 BOM so Arabic opens correctly in Excel).
   A true `.xlsx` writer would need a library.
-- **Library and Transport modules are not built** — they were scoped as
-  post-v1 in the brief.
 - **SMS/email notifications are not built.** WhatsApp click-to-send covers the
   same need without an account or a per-message cost.
 - **Exams are LAN-only by design.** Students must be on the school Wi-Fi.

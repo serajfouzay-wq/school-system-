@@ -1,6 +1,7 @@
 /** Types shared between the Electron main process and the React renderer. */
 
-export type Role = 'admin' | 'registrar' | 'teacher' | 'accountant' | 'viewer'
+export type { Role, Capability } from './permissions'
+import type { Role } from './permissions'
 export type Language = 'en' | 'ar'
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused'
 export type StaffAttendanceStatus = 'present' | 'absent' | 'late' | 'leave'
@@ -387,6 +388,7 @@ export interface Recipient {
   phone: string | null
   amount?: number
   class_label?: string
+  class_label_ar?: string
 }
 
 export interface PreparedMessage {
@@ -396,4 +398,109 @@ export interface PreparedMessage {
   body: string
   link: string | null
   problem: string | null
+}
+
+/* ---------- Library ---------- */
+
+export interface Book {
+  id: number
+  title: string
+  title_ar: string | null
+  author: string | null
+  category: string | null
+  isbn: string | null
+  shelf: string | null
+  description: string | null
+  cover_path: string | null
+  file_path: string | null
+  file_name: string | null
+  copies_total: number
+  copies_out?: number
+  copies_available?: number
+  is_digital?: boolean
+}
+
+export interface Loan {
+  id: number
+  book_id: number
+  student_id: number | null
+  staff_id: number | null
+  borrowed_at: string
+  due_at: string
+  returned_at: string | null
+  fine_amount: number
+  fine_paid: 0 | 1
+  note: string | null
+  book_title?: string
+  book_title_ar?: string | null
+  borrower_name?: string
+  borrower_name_ar?: string | null
+  student_code?: string
+  days_overdue?: number
+}
+
+export interface LibrarySummary {
+  titles: number
+  copies: number
+  onLoan: number
+  overdue: number
+  digital: number
+  unpaidFines: number
+}
+
+/* ---------- Transport ---------- */
+
+export interface Route {
+  id: number
+  name: string
+  name_ar: string | null
+  driver_name: string | null
+  driver_name_ar: string | null
+  driver_phone: string | null
+  assistant_name: string | null
+  vehicle_number: string | null
+  capacity: number | null
+  morning_time: string | null
+  afternoon_time: string | null
+  stops: string | null
+  fee_per_term: number
+  notes: string | null
+  status: string
+  rider_count?: number
+  seats_left?: number | null
+  collected?: number
+  expected?: number
+  outstanding?: number
+}
+
+export interface Rider {
+  id: number
+  route_id: number
+  student_id: number
+  pickup_point: string | null
+  direction: 'morning' | 'afternoon' | 'both'
+  term: string | null
+  started_at: string
+  ended_at: string | null
+  student_name?: string
+  student_name_ar?: string | null
+  student_code?: string
+  class_label?: string
+  class_label_ar?: string
+  guardian_phone?: string | null
+  route_name?: string
+  route_name_ar?: string | null
+  fee_per_term?: number
+  paid?: number
+  balance?: number
+}
+
+export interface TransportSummary {
+  routes: number
+  riders: number
+  seatsLeft: number | null
+  expected: number
+  collected: number
+  outstanding: number
+  unpaidRiders: number
 }

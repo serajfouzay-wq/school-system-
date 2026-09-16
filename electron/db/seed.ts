@@ -10,6 +10,8 @@ import { saveFeeStructure, recordPayment } from '../services/fees'
 import { saveTimetableEntry, defaultPeriods } from '../services/timetable'
 import { saveAnnouncement, saveEvent } from '../services/communication'
 import { saveExam, saveQuestion } from '../services/exams'
+import { saveBook, borrow, returnBook } from '../services/library'
+import { saveRoute, addRider, recordPayment as recordBusPayment } from '../services/transport'
 
 /** Names are given in both scripts so every screen can be checked in Arabic. */
 const FIRST = [
@@ -63,12 +65,20 @@ export function seedDemoData(): void {
   }
 
   if (countUsers() === 0) {
+    // The owner is the school's own account and outranks everyone. It is
+    // created first, then stands as the author of the rest — nobody is signed
+    // in during seeding, and the rank check refuses an anonymous creator.
+    const owner = createUser({
+      name: 'School Owner', username: 'owner', pin: '0000', role: 'owner',
+      security_question: 'What is the name of your first school?', security_answer: 'alnoor',
+    })
     createUser({
       name: 'School Administrator', username: 'admin', pin: '1234', role: 'admin',
       security_question: 'What is the name of your first school?', security_answer: 'alnoor',
-    })
-    createUser({ name: 'Office Clerk', username: 'clerk', pin: '1111', role: 'registrar' })
-    createUser({ name: 'Head Accountant', username: 'accounts', pin: '2222', role: 'accountant' })
+    }, owner.id)
+    createUser({ name: 'Office Clerk', username: 'clerk', pin: '1111', role: 'registrar' }, owner.id)
+    createUser({ name: 'Head Accountant', username: 'accounts', pin: '2222', role: 'accountant' }, owner.id)
+    createUser({ name: 'Nadia Hamad', username: 'nadia', pin: '3333', role: 'teacher' }, owner.id)
   }
 
   const subjectNames: [string, string][] = [
@@ -256,6 +266,105 @@ export function seedDemoData(): void {
   ]
   const examTx = db.transaction(() => { for (const q of demoQuestions) saveQuestion(q) })
   examTx()
+
+  // ---- Library ----------------------------------------------------------
+  const demoBooks: { title: string; title_ar: string; author: string; category: string; copies: number; shelf: string }[] = [
+    { title: 'The Arabian Nights', title_ar: 'ألف ليلة وليلة', author: 'Traditional', category: 'Stories', copies: 4, shelf: 'A1' },
+    { title: 'Kalila and Dimna', title_ar: 'كليلة ودمنة', author: 'Ibn al-Muqaffa', category: 'Stories', copies: 3, shelf: 'A1' },
+    { title: 'My First Atlas', title_ar: 'أطلسي الأول', author: 'H. Ward', category: 'Geography', copies: 2, shelf: 'B2' },
+    { title: 'Science All Around Us', title_ar: 'العلوم من حولنا', author: 'S. Nasser', category: 'Science', copies: 5, shelf: 'B1' },
+    { title: 'Arabic Grammar Made Simple', title_ar: 'قواعد العربية ببساطة', author: 'A. Hamdi', category: 'Language', copies: 6, shelf: 'C1' },
+    { title: 'Times Tables Practice', title_ar: 'تدريبات جدول الضرب', author: 'M. Salem', category: 'Mathematics', copies: 8, shelf: 'C2' },
+    { title: 'Stories of the Prophets', title_ar: 'قصص الأنبياء', author: 'Traditional', category: 'Religion', copies: 4, shelf: 'A2' },
+    { title: 'The Little Gardener', title_ar: 'البستاني الصغير', author: 'L. Fathi', category: 'Stories', copies: 3, shelf: 'A3' },
+    { title: 'Libya: Land and People', title_ar: 'ليبيا: الأرض والناس', author: 'K. Bashir', category: 'Geography', copies: 2, shelf: 'B2' },
+    { title: 'English Reading Step 1', title_ar: 'القراءة الإنجليزية - الخطوة الأولى', author: 'J. Allen', category: 'Language', copies: 6, shelf: 'C1' },
+  ]
+  const booksTx = db.transaction(() => {
+    const saved = demoBooks.map((b) =>
+      saveBook({ title: b.title, title_ar: b.title_ar, author: b.author, category: b.category, shelf: b.shelf, copies_total: b.copies })
+    )
+    // A handful of loans: some out, some overdue, some already back.
+    for (let i = 0; i < 14; i++) {
+      const book = saved[rand(saved.length)]
+      const student = students[rand(students.length)]
+      try {
+        const loan = borrow({ book_id: book.id, student_id: student.id, days: rand(3) === 0 ? -4 - rand(6) : 7 + rand(14) }, 1)
+        if (rand(3) === 0) returnBook(loan.id)
+      } catch {
+        // Already holding that title — skip and try another.
+      }
+    }
+  })
+  booksTx()
+
+  // ---- Transport --------------------------------------------------------
+  const routeSpecs: {
+    name: string; name_ar: string; driver: string; driver_ar: string; phone: string
+    assistant: string; vehicle: string; capacity: number; am: string; pm: string; stops: string; fee: number
+  }[] = [
+    {
+      name: 'Route 1 - Hay al-Andalus', name_ar: 'الخط 1 - حي الأندلس',
+      driver: 'Mahmoud Al-Ferjani', driver_ar: 'محمود الفرجاني', phone: '+218 91 234 5671',
+      assistant: 'Fatima Ali', vehicle: 'BUS-101', capacity: 28, am: '06:45', pm: '13:45',
+      stops: 'Al-Andalus roundabout, Green Mosque, Souq al-Juma', fee: 300,
+    },
+    {
+      name: 'Route 2 - Gargaresh', name_ar: 'الخط 2 - قرقارش',
+      driver: 'Ali Ben Saud', driver_ar: 'علي بن سعود', phone: '+218 92 345 6712',
+      assistant: 'Nadia Omar', vehicle: 'BUS-102', capacity: 24, am: '06:30', pm: '13:45',
+      stops: 'Gargaresh main road, Sea View, Al-Nasr Street', fee: 320,
+    },
+    {
+      name: 'Route 3 - Ain Zara', name_ar: 'الخط 3 - عين زارة',
+      driver: 'Khaled Ramadan', driver_ar: 'خالد رمضان', phone: '+218 94 456 7123',
+      assistant: 'Huda Salem', vehicle: 'BUS-103', capacity: 30, am: '06:20', pm: '14:00',
+      stops: 'Ain Zara bridge, Al-Salam School, Market street', fee: 350,
+    },
+    {
+      name: 'Route 4 - Janzour', name_ar: 'الخط 4 - جنزور',
+      driver: 'Youssef Miloud', driver_ar: 'يوسف ميلود', phone: '+218 91 567 8234',
+      assistant: '', vehicle: 'BUS-104', capacity: 20, am: '06:40', pm: '13:50',
+      stops: 'Janzour centre, Palm Street, Coast road', fee: 330,
+    },
+  ]
+  const transportTx = db.transaction(() => {
+    const routes = routeSpecs.map((r) =>
+      saveRoute({
+        name: r.name, name_ar: r.name_ar,
+        driver_name: r.driver, driver_name_ar: r.driver_ar, driver_phone: r.phone,
+        assistant_name: r.assistant || null, vehicle_number: r.vehicle,
+        capacity: r.capacity, morning_time: r.am, afternoon_time: r.pm,
+        stops: r.stops, fee_per_term: r.fee, status: 'active',
+      })
+    )
+    const pool = [...students].sort(() => Math.random() - 0.5).slice(0, 70)
+    let i = 0
+    for (const route of routes) {
+      const seats = Math.min(route.capacity ?? 20, 12 + rand(6))
+      for (let n = 0; n < seats && i < pool.length; n++, i++) {
+        const stop = (route.stops ?? '').split(',')[rand(3)]?.trim() || null
+        let rider
+        try {
+          rider = addRider({
+            route_id: route.id,
+            student_id: pool[i].id,
+            pickup_point: stop,
+            direction: rand(6) === 0 ? (rand(2) ? 'morning' : 'afternoon') : 'both',
+            term: midterm.name,
+          })
+        } catch {
+          continue
+        }
+        // Most families have paid in full, some paid part, a few not at all —
+        // so the "who has not paid" list has something real in it.
+        const roll = rand(10)
+        if (roll < 6) recordBusPayment({ rider_id: rider.id, amount_paid: route.fee_per_term }, 1)
+        else if (roll < 8) recordBusPayment({ rider_id: rider.id, amount_paid: Math.round(route.fee_per_term / 2) }, 1)
+      }
+    }
+  })
+  transportTx()
 
   // Announcements and calendar
   saveAnnouncement({ title: 'Parent–teacher meeting on Thursday', body: 'All guardians are invited from 4pm to 6pm in the main hall.' }, 1)

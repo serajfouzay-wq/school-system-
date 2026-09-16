@@ -14,6 +14,8 @@ export type Screen =
   | { name: 'grades' }
   | { name: 'exams' }
   | { name: 'fees' }
+  | { name: 'library' }
+  | { name: 'transport' }
   | { name: 'classes' }
   | { name: 'announcements' }
   | { name: 'calendar' }

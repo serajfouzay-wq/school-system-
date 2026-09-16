@@ -95,7 +95,7 @@ export function TimetablePage() {
       ? sections?.find((s) => s.id === Number(sectionId))
         ? sectionTitle(sections.find((s) => s.id === Number(sectionId))!, lang)
         : ''
-      : localName(staff?.find((s) => s.id === Number(staffId)) as unknown as Record<string, unknown>, lang, 'full_name')
+      : localName(staff?.find((s) => s.id === Number(staffId)), lang, 'full_name')
 
     await print(
       gridReportHtml({
@@ -165,7 +165,7 @@ export function TimetablePage() {
               value={staffId}
               onChange={(e) => setStaffId(e.target.value)}
               placeholder={t('common.select')}
-              options={(staff ?? []).map((s) => ({ value: s.id, label: localName(s as unknown as Record<string, unknown>, lang, 'full_name') }))}
+              options={(staff ?? []).map((s) => ({ value: s.id, label: localName(s, lang, 'full_name') }))}
             />
           </div>
         )}
@@ -304,14 +304,14 @@ function LessonEditor({
           value={subjectId}
           onChange={(e) => setSubjectId(e.target.value)}
           placeholder={t('common.select')}
-          options={(subjects ?? []).map((s) => ({ value: s.id, label: localName(s as unknown as Record<string, unknown>, lang) }))}
+          options={(subjects ?? []).map((s) => ({ value: s.id, label: localName(s, lang) }))}
         />
         <Select
           label={t('common.teacher')}
           value={staffId}
           onChange={(e) => setStaffId(e.target.value)}
           placeholder={t('common.none')}
-          options={(staff ?? []).map((s) => ({ value: s.id, label: localName(s as unknown as Record<string, unknown>, lang, 'full_name') }))}
+          options={(staff ?? []).map((s) => ({ value: s.id, label: localName(s, lang, 'full_name') }))}
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <TextInput label={t('common.startTime')} type="time" value={start} onChange={(e) => setStart(e.target.value)} />

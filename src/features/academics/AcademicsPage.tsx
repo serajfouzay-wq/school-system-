@@ -71,7 +71,7 @@ function ClassesTab() {
             {data.map((k) => (
               <li key={k.id} className="flex flex-wrap items-center gap-3 border-b p-4 last:border-0" style={{ borderColor: 'var(--app-border)' }}>
                 <span className="min-w-[10rem] flex-1">
-                  <span className="block text-lg font-bold">{localName(k as unknown as Record<string, unknown>, lang)}</span>
+                  <span className="block text-lg font-bold">{localName(k, lang)}</span>
                   {k.name_ar && lang !== 'ar' && <span className="block text-sm text-ink-500 dark:text-ink-300" dir="rtl">{k.name_ar}</span>}
                 </span>
                 <StatusPill tone="blue">{t('classes.sectionsInClass', { count: k.section_count ?? 0 })}</StatusPill>
@@ -258,7 +258,7 @@ function SectionEditor({
           required
           value={classId}
           onChange={(e) => setClassId(e.target.value)}
-          options={classes.map((c) => ({ value: c.id, label: localName(c as unknown as Record<string, unknown>, lang) }))}
+          options={classes.map((c) => ({ value: c.id, label: localName(c, lang) }))}
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <TextInput label={t('common.nameEnglish')} required value={name} onChange={(e) => setName(e.target.value)} autoFocus />
@@ -269,7 +269,7 @@ function SectionEditor({
           value={homeroom}
           onChange={(e) => setHomeroom(e.target.value)}
           placeholder={t('common.none')}
-          options={staff.map((s) => ({ value: s.id, label: localName(s as unknown as Record<string, unknown>, lang, 'full_name') }))}
+          options={staff.map((s) => ({ value: s.id, label: localName(s, lang, 'full_name') }))}
         />
         <TextInput label={t('classes.capacity')} type="number" dir="ltr" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
       </div>
@@ -309,7 +309,7 @@ function SubjectsTab() {
             {data.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center gap-3 border-b p-4 last:border-0" style={{ borderColor: 'var(--app-border)' }}>
                 <span className="min-w-[10rem] flex-1">
-                  <span className="block text-lg font-bold">{localName(s as unknown as Record<string, unknown>, lang)}</span>
+                  <span className="block text-lg font-bold">{localName(s, lang)}</span>
                   {s.name_ar && lang !== 'ar' && <span className="block text-sm text-ink-500 dark:text-ink-300" dir="rtl">{s.name_ar}</span>}
                 </span>
                 {s.code && <StatusPill tone="grey">{s.code}</StatusPill>}
@@ -495,7 +495,7 @@ function AssignmentEditor({
           value={subjectId}
           onChange={(e) => setSubjectId(e.target.value)}
           placeholder={t('common.select')}
-          options={subjects.map((s) => ({ value: s.id, label: localName(s as unknown as Record<string, unknown>, lang) }))}
+          options={subjects.map((s) => ({ value: s.id, label: localName(s, lang) }))}
         />
         <Select
           label={t('common.teacher')}
@@ -503,7 +503,7 @@ function AssignmentEditor({
           value={staffId}
           onChange={(e) => setStaffId(e.target.value)}
           placeholder={t('common.select')}
-          options={staff.map((s) => ({ value: s.id, label: localName(s as unknown as Record<string, unknown>, lang, 'full_name') }))}
+          options={staff.map((s) => ({ value: s.id, label: localName(s, lang, 'full_name') }))}
         />
       </div>
     </Modal>

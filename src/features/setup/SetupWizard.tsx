@@ -113,7 +113,8 @@ export function SetupWizard({ onDone }: { onDone: () => void }) {
         name: admin.name,
         username: admin.username,
         pin: admin.pin,
-        role: 'admin',
+        // The very first account is the school's own: nothing outranks it.
+        role: 'owner',
         security_question: admin.security_question,
         security_answer: admin.security_answer,
       })

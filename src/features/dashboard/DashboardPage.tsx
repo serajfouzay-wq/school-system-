@@ -36,7 +36,7 @@ export function DashboardPage() {
     percent: d.percent,
   }))
   const enrollment = data.enrollmentByClass.map((c) => ({
-    label: localName(c as unknown as Record<string, unknown>, lang, 'name'),
+    label: localName(c, lang, 'name'),
     count: c.count,
   }))
 

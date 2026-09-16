@@ -383,3 +383,105 @@ CREATE INDEX IF NOT EXISTS idx_exam_questions   ON exam_questions(exam_id, order
 CREATE INDEX IF NOT EXISTS idx_exam_attempts    ON exam_attempts(session_id);
 CREATE INDEX IF NOT EXISTS idx_exam_answers     ON exam_answers(attempt_id);
 CREATE INDEX IF NOT EXISTS idx_message_log      ON message_log(student_id, sent_at);
+
+/* ---------------------------------------------------------------
+   Library — physical copies to lend, and digital books that
+   students can read on their phones over the school Wi-Fi.
+   --------------------------------------------------------------- */
+
+CREATE TABLE IF NOT EXISTS library_books (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  school_id      INTEGER NOT NULL REFERENCES schools(id),
+  title          TEXT NOT NULL,
+  title_ar       TEXT,
+  author         TEXT,
+  category       TEXT,
+  isbn           TEXT,
+  shelf          TEXT,
+  description    TEXT,
+  cover_path     TEXT,
+  /* A PDF or ebook kept with the school's data. When set, the book can be
+     read on a phone from the library page; copies_total may be 0. */
+  file_path      TEXT,
+  file_name      TEXT,
+  copies_total   INTEGER NOT NULL DEFAULT 1,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+  deleted_at     TEXT
+);
+
+CREATE TABLE IF NOT EXISTS library_loans (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  book_id      INTEGER NOT NULL REFERENCES library_books(id),
+  student_id   INTEGER REFERENCES students(id),
+  staff_id     INTEGER REFERENCES staff(id),
+  borrowed_at  TEXT NOT NULL DEFAULT (date('now')),
+  due_at       TEXT NOT NULL,
+  returned_at  TEXT,
+  fine_amount  REAL NOT NULL DEFAULT 0,
+  fine_paid    INTEGER NOT NULL DEFAULT 0,
+  note         TEXT,
+  created_by   INTEGER REFERENCES users(id),
+  deleted_at   TEXT
+);
+
+/* ---------------------------------------------------------------
+   Transport — buses, drivers, who rides which bus, and whether
+   the family has paid for it.
+   --------------------------------------------------------------- */
+
+CREATE TABLE IF NOT EXISTS transport_routes (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  school_id      INTEGER NOT NULL REFERENCES schools(id),
+  name           TEXT NOT NULL,
+  name_ar        TEXT,
+  driver_name    TEXT,
+  driver_name_ar TEXT,
+  driver_phone   TEXT,
+  assistant_name TEXT,
+  vehicle_number TEXT,
+  capacity       INTEGER,
+  /* The times the bus leaves, so the office can answer a parent's question
+     without phoning the driver. */
+  morning_time   TEXT,
+  afternoon_time TEXT,
+  stops          TEXT,
+  fee_per_term   REAL NOT NULL DEFAULT 0,
+  notes          TEXT,
+  status         TEXT NOT NULL DEFAULT 'active',
+  created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+  deleted_at     TEXT
+);
+
+CREATE TABLE IF NOT EXISTS transport_riders (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  route_id     INTEGER NOT NULL REFERENCES transport_routes(id),
+  student_id   INTEGER NOT NULL REFERENCES students(id),
+  pickup_point TEXT,
+  direction    TEXT NOT NULL DEFAULT 'both', -- morning | afternoon | both
+  term         TEXT,
+  started_at   TEXT NOT NULL DEFAULT (date('now')),
+  ended_at     TEXT,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  deleted_at   TEXT
+);
+
+/* Transport money is kept separate from school fees so the two never get
+   confused in a report, but it works the same way: charge, then payments. */
+CREATE TABLE IF NOT EXISTS transport_payments (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  rider_id    INTEGER NOT NULL REFERENCES transport_riders(id),
+  amount_paid REAL NOT NULL,
+  date        TEXT NOT NULL DEFAULT (date('now')),
+  method      TEXT NOT NULL DEFAULT 'cash',
+  receipt_no  TEXT NOT NULL UNIQUE,
+  note        TEXT,
+  recorded_by INTEGER REFERENCES users(id),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  deleted_at  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_library_loans_open ON library_loans(returned_at, due_at);
+CREATE INDEX IF NOT EXISTS idx_library_loans_book ON library_loans(book_id);
+CREATE INDEX IF NOT EXISTS idx_riders_route       ON transport_riders(route_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_riders_student     ON transport_riders(student_id);
+CREATE INDEX IF NOT EXISTS idx_transport_payments ON transport_payments(rider_id);

@@ -6,6 +6,7 @@ import type {
   TeacherAssignment, AttendanceStatus, StaffAttendanceStatus,
   Exam, ExamQuestion, ExamAttempt, AttemptDetail, ServerStatus,
   Recipient, PreparedMessage, MessagePurpose,
+  Book, Loan, LibrarySummary, Route, Rider, TransportSummary,
 } from '@shared/types'
 
 declare global {
@@ -45,6 +46,8 @@ export const api = {
   },
 
   auth: {
+    /** The sign-in picker: the only user list readable before signing in. */
+    signInList: () => call<User[]>('auth.signInList'),
     login: (username: string, pin: string) => call<User>('auth.login', { username, pin }),
     logout: () => call<boolean>('auth.logout'),
     securityQuestion: (username: string) => call<string | null>('auth.securityQuestion', { username }),
@@ -127,7 +130,7 @@ export const api = {
     report: (opts: { from: string; to: string; sectionId?: number | null; classId?: number | null }) =>
       call<{
         student_id: number; student_code: string; full_name: string; full_name_ar: string | null
-        class_label: string; present: number; absent: number; late: number; excused: number
+        class_label: string; class_label_ar: string; present: number; absent: number; late: number; excused: number
         total: number; percent: number
       }[]>('attendance.report', opts),
     staffDay: (date: string) =>
@@ -229,6 +232,39 @@ export const api = {
     history: (studentId: number) =>
       call<{ id: number; purpose: string; phone: string; body: string; sent_at: string }[]>('whatsapp.history', { studentId }),
     countryCode: () => call<string>('whatsapp.countryCode'),
+  },
+
+  library: {
+    books: (filter?: Record<string, unknown>) => call<Book[]>('library.books', filter),
+    book: (id: number) => call<Book | null>('library.book', { id }),
+    categories: () => call<string[]>('library.categories'),
+    saveBook: (input: Record<string, unknown>) => call<Book>('library.saveBook', input),
+    removeBook: (id: number) => call<boolean>('library.deleteBook', { id }),
+    attachFile: (bookId: number, sourcePath: string) => call<Book>('library.attachFile', { bookId, sourcePath }),
+    removeFile: (bookId: number) => call<Book>('library.removeFile', { bookId }),
+    loans: (filter?: Record<string, unknown>) => call<Loan[]>('library.loans', filter),
+    borrow: (input: Record<string, unknown>) => call<Loan>('library.borrow', input),
+    returnBook: (loanId: number) => call<{ loan: Loan; fine: number; daysLate: number }>('library.return', { loanId }),
+    payFine: (loanId: number) => call<boolean>('library.payFine', { loanId }),
+    removeLoan: (id: number) => call<boolean>('library.deleteLoan', { id }),
+    summary: () => call<LibrarySummary>('library.summary'),
+    settings: () => call<{ loanDays: number; finePerDay: number }>('library.settings'),
+  },
+
+  transport: {
+    routes: () => call<Route[]>('transport.routes'),
+    route: (id: number) => call<Route | null>('transport.route', { id }),
+    saveRoute: (input: Record<string, unknown>) => call<Route>('transport.saveRoute', input),
+    removeRoute: (id: number) => call<boolean>('transport.deleteRoute', { id }),
+    riders: (filter?: Record<string, unknown>) => call<Rider[]>('transport.riders', filter),
+    addRider: (input: Record<string, unknown>) => call<Rider>('transport.addRider', input),
+    updateRider: (id: number, patch: Record<string, unknown>) => call<boolean>('transport.updateRider', { id, ...patch }),
+    endRide: (id: number) => call<boolean>('transport.endRide', { id }),
+    removeRider: (id: number) => call<boolean>('transport.removeRider', { id }),
+    payments: (riderId?: number) => call<Record<string, unknown>[]>('transport.payments', { riderId }),
+    recordPayment: (input: Record<string, unknown>) => call<Record<string, unknown>>('transport.recordPayment', input),
+    removePayment: (id: number) => call<boolean>('transport.deletePayment', { id }),
+    summary: () => call<TransportSummary>('transport.summary'),
   },
 
   dashboard: { summary: () => call<DashboardSummary>('dashboard.summary') },

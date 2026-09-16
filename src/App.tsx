@@ -14,6 +14,8 @@ import { TimetablePage } from '@/features/timetable/TimetablePage'
 import { GradesPage } from '@/features/grades/GradesPage'
 import { ExamsPage } from '@/features/exams/ExamsPage'
 import { FeesPage } from '@/features/fees/FeesPage'
+import { LibraryPage } from '@/features/library/LibraryPage'
+import { TransportPage } from '@/features/transport/TransportPage'
 import { AcademicsPage } from '@/features/academics/AcademicsPage'
 import { AnnouncementsPage } from '@/features/communication/AnnouncementsPage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
@@ -34,11 +36,21 @@ export default function App() {
   }, [boot])
 
   if (bootError) {
+    // This screen appears before the school's language is known, so it says the
+    // same thing twice rather than guessing which one the reader needs.
     return (
       <div className="grid h-full place-items-center p-8 text-center">
-        <div>
-          <h1 className="mb-2 text-2xl font-bold">Could not start</h1>
-          <p className="text-ink-500">{bootError}</p>
+        <div className="max-w-md">
+          <h1 className="mb-1 text-2xl font-bold">Could not start</h1>
+          <h2 className="mb-3 text-xl font-bold" dir="rtl" lang="ar">تعذّر بدء البرنامج</h2>
+          <p className="mb-4 text-ink-500">{bootError}</p>
+          <p className="text-sm text-ink-500">
+            Close the program and open it again. If it still will not start, restore the
+            most recent backup.
+          </p>
+          <p className="mt-1 text-sm text-ink-500" dir="rtl" lang="ar">
+            أغلق البرنامج ثم افتحه من جديد. وإن لم يبدأ، استعد آخر نسخة احتياطية.
+          </p>
         </div>
       </div>
     )
@@ -85,6 +97,8 @@ function renderScreen(screen: ReturnType<typeof useApp.getState>['screen']) {
     case 'grades': return <GradesPage />
     case 'exams': return <ExamsPage />
     case 'fees': return <FeesPage />
+    case 'library': return <LibraryPage />
+    case 'transport': return <TransportPage />
     case 'classes': return <AcademicsPage />
     case 'announcements': return <AnnouncementsPage />
     case 'calendar': return <AnnouncementsPage />

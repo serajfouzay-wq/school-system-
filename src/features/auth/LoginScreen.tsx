@@ -32,8 +32,8 @@ export function LoginScreen() {
   const [remember, setRemember] = useState(true)
 
   useEffect(() => {
-    api.users
-      .list(false)
+    api.auth
+      .signInList()
       .then((list) => {
         setUsers(list)
         const remembered = localStorage.getItem(REMEMBERED_KEY)

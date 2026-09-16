@@ -74,6 +74,13 @@ html[dir="rtl"] body { line-height: 1.75; }
     background: var(--app-surface);
     border-color: var(--app-border);
   }
+  /* Tells the eye that the menu continues past the edge of the panel. */
+  .nav-fade-bottom {
+    background: linear-gradient(to top, var(--app-surface), transparent);
+  }
+  .nav-fade-top {
+    background: linear-gradient(to bottom, var(--app-surface), transparent);
+  }
   /* Focus is always visible — the app must be usable without a mouse too. */
   .focus-ring {
     @apply outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-brand-500;

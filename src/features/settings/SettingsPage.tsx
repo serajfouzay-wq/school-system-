@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   School as SchoolIcon, Users, HardDriveDownload, Palette, Languages, Info,
   Plus, Pencil, Trash2, FolderOpen, Save, Image as ImageIcon, Sparkles, RotateCcw,
@@ -8,6 +9,7 @@ import { api } from '@/lib/api'
 import { useAsync } from '@/lib/hooks'
 import { useApp, useLang, useNumerals, useCalendarType } from '@/store/app'
 import type { Role, User } from '@shared/types'
+import { assignableRoles, canActOnRole, can } from '@shared/permissions'
 import { Button, ChoiceCard } from '@/components/ui/Button'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Select, TextInput, Field, Toggle } from '@/components/ui/Field'
@@ -19,27 +21,30 @@ import { formatDate } from '@/lib/format'
 
 export function SettingsPage() {
   const { t } = useTranslation()
-  const [tab, setTab] = useState<'school' | 'users' | 'backup' | 'appearance' | 'about'>('school')
+  const role = useApp((s) => s.user?.role) as Role | undefined
+  // Everyone gets Appearance and About — those are their own preferences and
+  // the version number. The rest is only shown to people who can use it, so
+  // nobody is offered a Save button that will refuse them.
+  const tabs = [
+    can(role, 'school.settings') && { id: 'school' as const, label: t('settings.schoolInfo'), icon: <SchoolIcon size={18} /> },
+    can(role, 'users.view') && { id: 'users' as const, label: t('settings.users'), icon: <Users size={18} /> },
+    can(role, 'school.backup') && { id: 'backup' as const, label: t('settings.backup'), icon: <HardDriveDownload size={18} /> },
+    { id: 'appearance' as const, label: t('settings.appearance'), icon: <Palette size={18} /> },
+    { id: 'about' as const, label: t('settings.about'), icon: <Info size={18} /> },
+  ].filter(Boolean) as { id: 'school' | 'users' | 'backup' | 'appearance' | 'about'; label: string; icon: ReactNode }[]
+
+  const [tab, setTab] = useState<'school' | 'users' | 'backup' | 'appearance' | 'about'>(tabs[0].id)
+  const active = tabs.some((x) => x.id === tab) ? tab : tabs[0].id
 
   return (
     <div>
       <PageHeader title={t('settings.title')} />
-      <Tabs
-        tabs={[
-          { id: 'school' as const, label: t('settings.schoolInfo'), icon: <SchoolIcon size={18} /> },
-          { id: 'users' as const, label: t('settings.users'), icon: <Users size={18} /> },
-          { id: 'backup' as const, label: t('settings.backup'), icon: <HardDriveDownload size={18} /> },
-          { id: 'appearance' as const, label: t('settings.appearance'), icon: <Palette size={18} /> },
-          { id: 'about' as const, label: t('settings.about'), icon: <Info size={18} /> },
-        ]}
-        active={tab}
-        onChange={setTab}
-      />
-      {tab === 'school' && <SchoolSettings />}
-      {tab === 'users' && <UserSettings />}
-      {tab === 'backup' && <BackupSettings />}
-      {tab === 'appearance' && <AppearanceSettings />}
-      {tab === 'about' && <AboutSettings />}
+      <Tabs tabs={tabs} active={active} onChange={setTab} />
+      {active === 'school' && <SchoolSettings />}
+      {active === 'users' && <UserSettings />}
+      {active === 'backup' && <BackupSettings />}
+      {active === 'appearance' && <AppearanceSettings />}
+      {active === 'about' && <AboutSettings />}
     </div>
   )
 }
@@ -174,11 +179,16 @@ function UserSettings() {
               <StatusPill tone={u.is_active ? 'green' : 'grey'}>
                 {u.is_active ? t('settings.userActive') : t('settings.userInactive')}
               </StatusPill>
-              <Button size="sm" onClick={() => setEditing(u)} icon={<Pencil size={16} />}>{t('common.edit')}</Button>
-              {u.id !== current?.id && (
-                <Button size="sm" variant="ghost" onClick={() => setDeleting(u)} icon={<Trash2 size={16} className="text-rose-600" />}>
-                  <span className="sr-only">{t('common.delete')}</span>
-                </Button>
+              {/* An account you cannot manage is shown but not editable. */}
+              {canActOnRole(current?.role, u.role) && (
+                <>
+                  <Button size="sm" onClick={() => setEditing(u)} icon={<Pencil size={16} />}>{t('common.edit')}</Button>
+                  {u.id !== current?.id && (
+                    <Button size="sm" variant="ghost" onClick={() => setDeleting(u)} icon={<Trash2 size={16} className="text-rose-600" />}>
+                      <span className="sr-only">{t('common.delete')}</span>
+                    </Button>
+                  )}
+                </>
               )}
             </li>
           ))}
@@ -217,6 +227,7 @@ function UserSettings() {
 function UserEditor({ user, onClose, onSaved }: { user: User | null; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation()
   const toast = useApp((s) => s.toast)
+  const actorRole = useApp((s) => s.user?.role) as Role | undefined
   const [name, setName] = useState(user?.name ?? '')
   const [username, setUsername] = useState(user?.username ?? '')
   const [role, setRole] = useState<Role>(user?.role ?? 'teacher')
@@ -287,7 +298,7 @@ function UserEditor({ user, onClose, onSaved }: { user: User | null; onClose: ()
           label={t('settings.role')}
           value={role}
           onChange={(e) => setRole(e.target.value as Role)}
-          options={(['admin', 'registrar', 'teacher', 'accountant', 'viewer'] as const).map((r) => ({ value: r, label: t(`roles.${r}`) }))}
+          options={assignableRoles(actorRole).map((r) => ({ value: r, label: t(`roles.${r}`) }))}
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <TextInput
@@ -542,6 +553,7 @@ function AppearanceSettings() {
 function AboutSettings() {
   const { t } = useTranslation()
   const toast = useApp((s) => s.toast)
+  const currentRole = useApp((s) => s.user?.role) as Role | undefined
   const touch = useApp((s) => s.touch)
   const [confirmDemo, setConfirmDemo] = useState(false)
   const { data: version } = useAsync(() => api.app.version(), [])
@@ -563,7 +575,7 @@ function AboutSettings() {
         </div>
       </Card>
 
-      {!seeded && (
+      {!seeded && can(currentRole, 'school.dangerZone') && (
         <Card>
           <CardTitle>{t('settings.loadDemoData')}</CardTitle>
           <p className="mb-4 text-ink-500 dark:text-ink-300">{t('setup.loadDemoHelp')}</p>

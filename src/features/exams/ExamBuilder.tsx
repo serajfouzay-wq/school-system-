@@ -97,14 +97,14 @@ export function ExamSettings({
             value={form.subject_id}
             onChange={(e) => set('subject_id', e.target.value)}
             placeholder={t('common.select')}
-            options={(subjects ?? []).map((s) => ({ value: s.id, label: localName(s as unknown as Record<string, unknown>, lang) }))}
+            options={(subjects ?? []).map((s) => ({ value: s.id, label: localName(s, lang) }))}
           />
           <Select
             label={t('grades.chooseTerm')}
             value={form.exam_term_id}
             onChange={(e) => set('exam_term_id', e.target.value)}
             placeholder={t('common.select')}
-            options={(terms ?? []).map((x) => ({ value: x.id, label: localName(x as unknown as Record<string, unknown>, lang) }))}
+            options={(terms ?? []).map((x) => ({ value: x.id, label: localName(x, lang) }))}
           />
         </div>
         <TextInput

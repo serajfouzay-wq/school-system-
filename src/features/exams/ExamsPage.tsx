@@ -34,7 +34,7 @@ export function ExamsPage() {
     return (
       <div>
         <PageHeader
-          title={localName(view.exam as unknown as Record<string, unknown>, lang, 'title')}
+          title={localName(view.exam, lang, 'title')}
           subtitle={`${view.exam.section_label ?? ''} · ${view.exam.subject_name ?? ''}`}
           actions={
             <>
@@ -54,7 +54,7 @@ export function ExamsPage() {
     return (
       <div>
         <PageHeader
-          title={localName(view.exam as unknown as Record<string, unknown>, lang, 'title')}
+          title={localName(view.exam, lang, 'title')}
           subtitle={view.exam.section_label ?? ''}
         />
         <ExamLive exam={view.exam} onBack={() => { setView({ name: 'list' }); reload() }} />
@@ -103,7 +103,7 @@ export function ExamsPage() {
             {exams.map((e) => (
               <li key={e.id} className="flex flex-wrap items-center gap-3 border-b p-4 last:border-0" style={{ borderColor: 'var(--app-border)' }}>
                 <span className="min-w-[12rem] flex-1">
-                  <span className="block text-lg font-bold">{localName(e as unknown as Record<string, unknown>, lang, 'title')}</span>
+                  <span className="block text-lg font-bold">{localName(e, lang, 'title')}</span>
                   <span className="block text-sm text-ink-500 dark:text-ink-300">
                     {[e.section_label, e.subject_name, e.term_name].filter(Boolean).join(' · ') || '—'}
                   </span>

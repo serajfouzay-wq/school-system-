@@ -14,7 +14,7 @@ interface Ctx {
 const dirOf = (lang: string) => (lang === 'ar' ? 'rtl' : 'ltr')
 
 function schoolName(school: School, lang: 'en' | 'ar'): string {
-  return localName(school as unknown as Record<string, unknown>, lang, 'name')
+  return localName(school, lang, 'name')
 }
 
 /* ---------------- Report card ---------------- */
@@ -38,7 +38,7 @@ export function reportCardHtml(data: ReportCardData, ctx: Ctx): string {
       address: data.school.address,
       phone: data.school.phone,
       docTitle: t('grades.reportCard'),
-      meta: localName(data.term as unknown as Record<string, unknown>, lang, 'name'),
+      meta: localName(data.term, lang, 'name'),
     })}
 
     <div class="grid2">
@@ -317,4 +317,88 @@ export function gridReportHtml(opts: {
     t: opts.t,
     landscape: opts.landscape,
   })
+}
+
+/* ---------------- Transport receipt ---------------- */
+
+/**
+ * Bus money is not school fees, so it gets its own receipt rather than a fee
+ * receipt wearing a different label. The layout is deliberately the same one
+ * the office already knows.
+ */
+export function transportReceiptHtml(
+  data: {
+    school: School
+    receiptNo: string
+    date: string
+    method: string
+    amount: number
+    studentName: string
+    studentCode: string
+    classLabel: string
+    routeName: string
+    balanceAfter: number
+    note?: string | null
+  },
+  ctx: Ctx
+): string {
+  const { t, lang, numerals, calendar, logo } = ctx
+  const currency = data.school.currency
+  const methodLabel = t(`fees.${data.method}` as never, { defaultValue: data.method })
+  const kv = (k: string, v: string, numeric = false) =>
+    `<div class="kv"><span class="k">${escapeHtml(k)}</span><span class="v${numeric ? ' num' : ''}">${escapeHtml(v)}</span></div>`
+
+  const body = `
+  <div class="page" style="padding:12mm">
+    ${documentHeader({
+      schoolName: schoolName(data.school, lang),
+      logoDataUrl: logo,
+      address: data.school.address,
+      phone: data.school.phone,
+      docTitle: t('transport.receipt'),
+      meta: data.receiptNo,
+    })}
+
+    <div class="grid2">
+      ${kv(t('fees.receiptNo'), data.receiptNo, true)}
+      ${kv(t('common.date'), formatDate(data.date, lang, { calendar, numerals }), true)}
+      ${kv(t('fees.receivedFrom'), data.studentName)}
+      ${kv(t('students.studentId'), data.studentCode, true)}
+      ${kv(t('common.class'), data.classLabel)}
+      ${kv(t('transport.route'), data.routeName)}
+    </div>
+
+    ${documentTable(
+      [{ label: t('transport.busFee') }, { label: t('common.amount'), numeric: true }],
+      [[data.routeName, formatMoney(data.amount, currency, lang, numerals)]]
+    )}
+
+    <table style="margin-top:10px">
+      <tbody>
+        <tr>
+          <th style="width:60%">${escapeHtml(t('fees.paid'))}</th>
+          <td class="num" style="font-size:15pt; font-weight:800">${escapeHtml(
+            formatMoney(data.amount, currency, lang, numerals)
+          )}</td>
+        </tr>
+        <tr>
+          <th>${escapeHtml(t('transport.balance'))}</th>
+          <td class="num">${escapeHtml(formatMoney(data.balanceAfter, currency, lang, numerals))}</td>
+        </tr>
+        <tr>
+          <th>${escapeHtml(t('fees.paymentMethod'))}</th>
+          <td>${escapeHtml(methodLabel)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    ${data.note ? `<p class="muted" style="margin-top:10px">${escapeHtml(data.note)}</p>` : ''}
+
+    <div class="signatures">
+      <div class="sig"><div class="line">${escapeHtml(t('fees.receivedBy'))}</div></div>
+      <div class="sig"><div class="line">${escapeHtml(t('fees.thankYou'))}</div></div>
+    </div>
+  </div>`
+
+  return buildDocument({ title: `${t('transport.receipt')} ${data.receiptNo}`, dir: dirOf(lang), lang, body })
 }

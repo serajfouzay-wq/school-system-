@@ -63,7 +63,17 @@ export function formatDate(
     )
     HIJRI_FORMATTERS.set(key, fmt)
   }
-  return toNumerals(fmt.format(date), opts.numerals ?? 'western')
+  // Intl's Arabic output carries RIGHT-TO-LEFT MARKs between the parts. They
+  // are meant for a right-to-left paragraph, but a date also lands inside spans
+  // that force left-to-right (so figures always read the same way), and there
+  // the two rules fight: "16/09/2026" comes out as "162026/09/". Dropping the
+  // marks leaves plain digits and slashes, which both contexts get right.
+  return toNumerals(stripBidiMarks(fmt.format(date)), opts.numerals ?? 'western')
+}
+
+/** RLM, LRM and the Arabic letter mark. */
+function stripBidiMarks(text: string): string {
+  return text.replace(/[\u200E\u200F\u061C]/g, '')
 }
 
 export function formatTime(time: string | null | undefined, numerals = 'western'): string {
@@ -95,13 +105,14 @@ export function daysBetween(fromIso: string, toIso: string): number {
 /** Prefer the Arabic name when the interface is in Arabic, but never show a
  *  blank cell just because the Arabic name was left empty. */
 export function localName(
-  record: { [k: string]: unknown } | null | undefined,
+  record: object | null | undefined,
   lang: Language,
   base = 'name'
 ): string {
   if (!record) return ''
-  const arabic = record[`${base}_ar`]
-  const latin = record[base]
+  const row = record as Record<string, unknown>
+  const arabic = row[`${base}_ar`]
+  const latin = row[base]
   if (lang === 'ar' && typeof arabic === 'string' && arabic.trim()) return arabic
   return typeof latin === 'string' ? latin : typeof arabic === 'string' ? arabic : ''
 }

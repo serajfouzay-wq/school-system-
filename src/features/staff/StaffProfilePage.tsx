@@ -39,7 +39,7 @@ export function StaffProfilePage({ id }: { id: number }) {
   if (error) return <ErrorState message={error} onRetry={reload} />
   if (!staff) return null
 
-  const name = localName(staff as unknown as Record<string, unknown>, lang, 'full_name')
+  const name = localName(staff, lang, 'full_name')
 
   const printTimetable = async () => {
     if (!school || !lessons?.length) return
@@ -209,7 +209,7 @@ function AssignDialog({ staffId, onClose, onSaved }: { staffId: number; onClose:
           value={subjectId}
           onChange={(e) => setSubjectId(e.target.value)}
           placeholder={t('common.select')}
-          options={(subjects ?? []).map((s) => ({ value: s.id, label: localName(s as unknown as Record<string, unknown>, lang) }))}
+          options={(subjects ?? []).map((s) => ({ value: s.id, label: localName(s, lang) }))}
         />
       </div>
     </Modal>

@@ -40,7 +40,7 @@ export function StaffPage() {
     [debounced, role]
   )
 
-  const name = (s: Staff) => localName(s as unknown as Record<string, unknown>, lang, 'full_name')
+  const name = (s: Staff) => localName(s, lang, 'full_name')
 
   const columns: Column<Staff>[] = [
     {

@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import {
   Home, Users, GraduationCap, CalendarCheck, CalendarDays, ClipboardList,
   Wallet, Layers, Megaphone, FileBarChart, Settings as SettingsIcon, FileQuestion,
-  Trash2, HelpCircle, Search, LogOut, Languages, ChevronLeft, X, UserRoundCog,
+  Trash2, HelpCircle, Search, Languages, ChevronLeft, X, UserRoundCog,
+  BookOpen, Bus,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useApp, useLang } from '@/store/app'
@@ -11,29 +12,40 @@ import type { Screen } from '@/store/app'
 import { api } from '@/lib/api'
 import { useDebounced } from '@/lib/hooks'
 import type { SearchHit } from '@shared/types'
+import { can } from '@shared/permissions'
+import type { Capability, Role } from '@shared/permissions'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 
-interface NavItem { screen: Screen['name']; labelKey: string; icon: ReactNode }
+interface NavItem {
+  screen: Screen['name']
+  labelKey: string
+  icon: ReactNode
+  /** Leave unset for the screens everyone who can sign in may open. */
+  needs?: Capability
+}
 
 /** The same icon always means the same thing, and the order never changes. */
 const NAV: NavItem[] = [
   { screen: 'dashboard', labelKey: 'nav.dashboard', icon: <Home size={22} /> },
-  { screen: 'students', labelKey: 'nav.students', icon: <Users size={22} /> },
-  { screen: 'staff', labelKey: 'nav.staff', icon: <GraduationCap size={22} /> },
-  { screen: 'attendance', labelKey: 'nav.attendance', icon: <CalendarCheck size={22} /> },
-  { screen: 'timetable', labelKey: 'nav.timetable', icon: <CalendarDays size={22} /> },
-  { screen: 'grades', labelKey: 'nav.grades', icon: <ClipboardList size={22} /> },
-  { screen: 'exams', labelKey: 'nav.exams', icon: <FileQuestion size={22} /> },
-  { screen: 'fees', labelKey: 'nav.fees', icon: <Wallet size={22} /> },
-  { screen: 'classes', labelKey: 'nav.classes', icon: <Layers size={22} /> },
-  { screen: 'announcements', labelKey: 'nav.announcements', icon: <Megaphone size={22} /> },
-  { screen: 'reports', labelKey: 'nav.reports', icon: <FileBarChart size={22} /> },
+  { screen: 'students', labelKey: 'nav.students', icon: <Users size={22} />, needs: 'students.view' },
+  { screen: 'staff', labelKey: 'nav.staff', icon: <GraduationCap size={22} />, needs: 'staff.view' },
+  { screen: 'attendance', labelKey: 'nav.attendance', icon: <CalendarCheck size={22} />, needs: 'attendance.view' },
+  { screen: 'timetable', labelKey: 'nav.timetable', icon: <CalendarDays size={22} />, needs: 'timetable.view' },
+  { screen: 'grades', labelKey: 'nav.grades', icon: <ClipboardList size={22} />, needs: 'grades.view' },
+  { screen: 'exams', labelKey: 'nav.exams', icon: <FileQuestion size={22} />, needs: 'exams.view' },
+  { screen: 'fees', labelKey: 'nav.fees', icon: <Wallet size={22} />, needs: 'fees.view' },
+  { screen: 'library', labelKey: 'nav.library', icon: <BookOpen size={22} />, needs: 'library.view' },
+  { screen: 'transport', labelKey: 'nav.transport', icon: <Bus size={22} />, needs: 'transport.view' },
+  { screen: 'classes', labelKey: 'nav.classes', icon: <Layers size={22} />, needs: 'academics.view' },
+  { screen: 'announcements', labelKey: 'nav.announcements', icon: <Megaphone size={22} />, needs: 'announcements.view' },
+  { screen: 'reports', labelKey: 'nav.reports', icon: <FileBarChart size={22} />, needs: 'reports.view' },
 ]
 
+/** Shown after a divider, at the end of the same list. */
 const FOOTER_NAV: NavItem[] = [
   { screen: 'settings', labelKey: 'nav.settings', icon: <SettingsIcon size={22} /> },
-  { screen: 'recycleBin', labelKey: 'nav.recycleBin', icon: <Trash2 size={22} /> },
+  { screen: 'recycleBin', labelKey: 'nav.recycleBin', icon: <Trash2 size={22} />, needs: 'recycle.view' },
   { screen: 'help', labelKey: 'nav.help', icon: <HelpCircle size={22} /> },
 ]
 
@@ -48,15 +60,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const school = useApp((s) => s.school)
   const signOut = useApp((s) => s.signOut)
   const setLanguage = useApp((s) => s.setLanguage)
+  const role = (user?.role ?? null) as Role | null
 
   return (
     <div className="flex h-full">
       {/* The sidebar is always on the inline-start edge, which puts it on the
           right automatically once the document direction is RTL. */}
       <nav className="no-print flex w-64 shrink-0 flex-col border-e surface" style={{ borderColor: 'var(--app-border)' }}>
-        <div className="flex items-center gap-3 p-4">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-600 text-white">
-            <GraduationCap size={24} />
+        <div className="flex items-center gap-3 px-4 py-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-600 text-white">
+            <GraduationCap size={22} />
           </span>
           <div className="min-w-0">
             <p className="truncate font-bold leading-tight">
@@ -66,17 +79,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <div className="flex-1 space-y-1 overflow-y-auto px-3 pb-3">
-          {NAV.map((item) => (
-            <NavButton key={item.screen} item={item} active={screen.name === item.screen} onClick={() => go({ name: item.screen } as Screen)} />
-          ))}
-        </div>
-
-        <div className="space-y-1 border-t p-3" style={{ borderColor: 'var(--app-border)' }}>
-          {FOOTER_NAV.map((item) => (
-            <NavButton key={item.screen} item={item} active={screen.name === item.screen} onClick={() => go({ name: item.screen } as Screen)} />
-          ))}
-        </div>
+        {/* One continuous menu. On a short screen it scrolls, and the fade at
+            the bottom edge is there so it is obvious something is below —
+            a hairline scrollbar is not a clue most people notice. */}
+        <NavList role={role} screen={screen.name} go={go} />
 
         <div className="border-t p-3" style={{ borderColor: 'var(--app-border)' }}>
           <button
@@ -95,15 +101,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <p className="truncate text-sm font-bold">{user.name}</p>
                   <p className="truncate text-xs text-ink-500 dark:text-ink-300">{t(`roles.${user.role}`)}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void signOut()}
-                  title={t('nav.signOut')}
-                  aria-label={t('nav.signOut')}
-                  className="grid h-10 w-10 place-items-center rounded-xl text-ink-500 hover:bg-ink-100 focus-ring dark:hover:bg-ink-800"
-                >
-                  <LogOut size={20} className="flip-rtl" />
-                </button>
               </div>
               {/* Office computers are shared: swapping to a colleague is one
                   click and lands straight back on the user picker. */}
@@ -136,6 +133,62 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
     </div>
   )
+}
+
+/**
+ * The menu. It scrolls when the window is short, and says so: a fade on
+ * whichever edge has more behind it, kept in step with the scroll position.
+ */
+function NavList({ role, screen, go }: { role: Role | null; screen: Screen['name']; go: (s: Screen) => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [edges, setEdges] = useState({ top: false, bottom: false })
+
+  const measure = () => {
+    const el = ref.current
+    if (!el) return
+    const room = el.scrollHeight - el.clientHeight
+    setEdges({ top: el.scrollTop > 4, bottom: room > 4 && el.scrollTop < room - 4 })
+  }
+
+  useEffect(() => {
+    measure()
+    const el = ref.current
+    if (!el) return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    window.addEventListener('resize', measure)
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure) }
+  }, [role])
+
+  const items = [...NAV.filter((i) => allowed(role, i)), null, ...FOOTER_NAV.filter((i) => allowed(role, i))]
+
+  return (
+    <div className="relative min-h-0 flex-1">
+      <div ref={ref} onScroll={measure} className="h-full space-y-0.5 overflow-y-auto px-3 pb-3">
+        {items.map((item) =>
+          item === null ? (
+            <hr key="divider" className="my-2 border-0 border-t" style={{ borderColor: 'var(--app-border)' }} />
+          ) : (
+            <NavButton
+              key={item.screen}
+              item={item}
+              active={screen === item.screen}
+              onClick={() => go({ name: item.screen } as Screen)}
+            />
+          )
+        )}
+        {/* Room for the fade, so the last item is never half-hidden under it. */}
+        <div aria-hidden className="h-2" />
+      </div>
+      {edges.top && <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-6 nav-fade-top" />}
+      {edges.bottom && <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-8 nav-fade-bottom" />}
+    </div>
+  )
+}
+
+/** Hide what this person cannot use; the main process refuses it regardless. */
+function allowed(role: Role | null, item: NavItem): boolean {
+  return !item.needs || can(role, item.needs)
 }
 
 function NavButton({ item, active, onClick }: { item: NavItem; active: boolean; onClick: () => void }) {

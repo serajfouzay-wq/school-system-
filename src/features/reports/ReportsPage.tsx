@@ -99,7 +99,7 @@ function ReportDialog({ id, onClose }: { id: ReportId; onClose: () => void }) {
         rows: rows.map((r) => [
           r.student_code,
           lang === 'ar' && r.full_name_ar ? r.full_name_ar : r.full_name,
-          r.class_label, r.present, r.absent, r.late, r.excused, `${r.percent}%`,
+          localName(r, lang, 'class_label'), r.present, r.absent, r.late, r.excused, `${r.percent}%`,
         ]),
         meta: `${formatDate(from, lang, { calendar, numerals })} → ${formatDate(to, lang, { calendar, numerals })}`,
       }
@@ -120,7 +120,7 @@ function ReportDialog({ id, onClose }: { id: ReportId; onClose: () => void }) {
           formatMoney(r.paid, currency, lang, numerals),
           formatMoney(r.balance, currency, lang, numerals),
         ]),
-        meta: classId ? localName(classes?.find((c) => c.id === Number(classId)) as unknown as Record<string, unknown>, lang) : t('reports.allClasses'),
+        meta: classId ? localName(classes?.find((c) => c.id === Number(classId)), lang) : t('reports.allClasses'),
         summary: [
           { label: t('fees.billed'), value: formatMoney(billed, currency, lang, numerals) },
           { label: t('fees.paid'), value: formatMoney(paid, currency, lang, numerals) },
@@ -138,7 +138,7 @@ function ReportDialog({ id, onClose }: { id: ReportId; onClose: () => void }) {
       return {
         columns: [
           { label: t('students.studentId') }, { label: t('common.name') },
-          ...subjects.map((s) => ({ label: localName(s as unknown as Record<string, unknown>, lang), numeric: true })),
+          ...subjects.map((s) => ({ label: localName(s, lang), numeric: true })),
           { label: t('common.percent'), numeric: true }, { label: t('common.rank'), numeric: true },
         ],
         rows: grid.map((r) => [
@@ -148,7 +148,7 @@ function ReportDialog({ id, onClose }: { id: ReportId; onClose: () => void }) {
           r.maxTotal ? `${r.percent.toFixed(1)}%` : '',
           r.rank || '',
         ]),
-        meta: `${sections?.find((s) => s.id === Number(sectionId)) ? sectionTitle(sections.find((s) => s.id === Number(sectionId))!, lang) : ''} · ${localName(terms?.find((x) => x.id === Number(termId)) as unknown as Record<string, unknown>, lang)}`,
+        meta: `${sections?.find((s) => s.id === Number(sectionId)) ? sectionTitle(sections.find((s) => s.id === Number(sectionId))!, lang) : ''} · ${localName(terms?.find((x) => x.id === Number(termId)), lang)}`,
       }
     }
 
@@ -164,7 +164,7 @@ function ReportDialog({ id, onClose }: { id: ReportId; onClose: () => void }) {
           s.guardian_name ?? '', s.guardian_phone ?? '',
           formatDate(s.dob, lang, { calendar, numerals }),
         ]),
-        meta: classId ? localName(classes?.find((c) => c.id === Number(classId)) as unknown as Record<string, unknown>, lang) : t('reports.allClasses'),
+        meta: classId ? localName(classes?.find((c) => c.id === Number(classId)), lang) : t('reports.allClasses'),
       }
     }
 
@@ -175,7 +175,7 @@ function ReportDialog({ id, onClose }: { id: ReportId; onClose: () => void }) {
         { label: t('common.phone') }, { label: t('common.email') }, { label: t('staff.hireDate') },
       ],
       rows: rows.map((s) => [
-        s.staff_code, localName(s as unknown as Record<string, unknown>, lang, 'full_name'),
+        s.staff_code, localName(s, lang, 'full_name'),
         t(`roles.${s.role}`, { defaultValue: s.role }), s.phone ?? '', s.email ?? '',
         formatDate(s.hire_date, lang, { calendar, numerals }),
       ]),
@@ -252,7 +252,7 @@ function ReportDialog({ id, onClose }: { id: ReportId; onClose: () => void }) {
             value={classId}
             onChange={(e) => setClassId(e.target.value)}
             placeholder={t('reports.allClasses')}
-            options={(classes ?? []).map((c) => ({ value: c.id, label: localName(c as unknown as Record<string, unknown>, lang) }))}
+            options={(classes ?? []).map((c) => ({ value: c.id, label: localName(c, lang) }))}
           />
         )}
         {needsSectionAndTerm && (
@@ -271,7 +271,7 @@ function ReportDialog({ id, onClose }: { id: ReportId; onClose: () => void }) {
               value={termId}
               onChange={(e) => setTermId(e.target.value)}
               placeholder={t('common.select')}
-              options={(terms ?? []).map((tm) => ({ value: tm.id, label: localName(tm as unknown as Record<string, unknown>, lang) }))}
+              options={(terms ?? []).map((tm) => ({ value: tm.id, label: localName(tm, lang) }))}
             />
           </>
         )}

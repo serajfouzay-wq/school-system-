@@ -146,7 +146,7 @@ function GradeEntry({ terms }: { terms: ExamTerm[] }) {
             value={termId}
             onChange={(e) => setTermId(e.target.value)}
             placeholder={t('common.select')}
-            options={terms.map((tm) => ({ value: tm.id, label: localName(tm as unknown as Record<string, unknown>, lang) }))}
+            options={terms.map((tm) => ({ value: tm.id, label: localName(tm, lang) }))}
           />
         </div>
         <StatusPill tone={saveState === 'saving' ? 'amber' : saveState === 'saved' ? 'green' : 'grey'}>
@@ -174,7 +174,7 @@ function GradeEntry({ terms }: { terms: ExamTerm[] }) {
                   </th>
                   {(subjects ?? []).map((s) => (
                     <th key={s.id} className="p-3 text-center text-sm font-bold" style={{ minWidth: '6.5rem' }}>
-                      {localName(s as unknown as Record<string, unknown>, lang)}
+                      {localName(s, lang)}
                     </th>
                   ))}
                   <th className="p-3 text-center text-sm font-bold">{t('common.total')}</th>
@@ -294,7 +294,7 @@ function ReportCards({ terms }: { terms: ExamTerm[] }) {
             value={termId}
             onChange={(e) => setTermId(e.target.value)}
             placeholder={t('common.select')}
-            options={terms.map((tm) => ({ value: tm.id, label: localName(tm as unknown as Record<string, unknown>, lang) }))}
+            options={terms.map((tm) => ({ value: tm.id, label: localName(tm, lang) }))}
           />
         </div>
         <Button size="lg" variant="primary" loading={busy} disabled={!grid?.length} onClick={() => void printAll()} icon={<Printer size={20} />}>
@@ -423,7 +423,7 @@ function ExamTerms({ terms, onChange }: { terms: ExamTerm[]; onChange: () => voi
             {terms.map((term) => (
               <li key={term.id} className="flex flex-wrap items-center gap-3 border-b p-4 last:border-0" style={{ borderColor: 'var(--app-border)' }}>
                 <span className="min-w-[10rem] flex-1">
-                  <span className="block font-bold">{localName(term as unknown as Record<string, unknown>, lang)}</span>
+                  <span className="block font-bold">{localName(term, lang)}</span>
                   <span className="block text-sm text-ink-500 dark:text-ink-300">
                     {term.start_date ?? '—'} → {term.end_date ?? '—'}
                   </span>
@@ -448,7 +448,7 @@ function ExamTerms({ terms, onChange }: { terms: ExamTerm[]; onChange: () => voi
 
       <ConfirmDialog
         open={!!deleting}
-        title={t('common.confirmDelete', { name: deleting ? localName(deleting as unknown as Record<string, unknown>, lang) : '' })}
+        title={t('common.confirmDelete', { name: deleting ? localName(deleting, lang) : '' })}
         body={t('common.deleteExplain')}
         onConfirm={async () => {
           if (!deleting) return

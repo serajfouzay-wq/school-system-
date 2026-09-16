@@ -76,6 +76,7 @@ export interface AttendanceReportRow {
   full_name: string
   full_name_ar: string | null
   class_label: string
+  class_label_ar: string
   present: number
   absent: number
   late: number
@@ -92,6 +93,7 @@ export function attendanceReport(opts: { from: string; to: string; sectionId?: n
     .prepare(
       `SELECT st.id AS student_id, st.student_code, st.full_name, st.full_name_ar,
               COALESCE(c.name || ' - ' || sec.name, '') AS class_label,
+              COALESCE(COALESCE(c.name_ar, c.name) || ' - ' || COALESCE(sec.name_ar, sec.name), '') AS class_label_ar,
               COALESCE(SUM(a.status = 'present'), 0) AS present,
               COALESCE(SUM(a.status = 'absent'), 0) AS absent,
               COALESCE(SUM(a.status = 'late'), 0) AS late,

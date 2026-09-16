@@ -24,6 +24,7 @@ export interface Recipient {
   phone: string | null
   amount?: number
   class_label?: string
+  class_label_ar?: string
 }
 
 /**
@@ -104,7 +105,7 @@ export function prepare(
       guardian: r.guardian_name ?? student,
       student,
       school: schoolName,
-      class: r.class_label ?? '',
+      class: ((lang === 'ar' && r.class_label_ar) || r.class_label) ?? '',
       date: today(),
       amount: r.amount !== undefined ? `${r.amount} ${currency}` : '',
       ...extra,
@@ -153,6 +154,7 @@ export function feeDebtors(classId?: number | null): Recipient[] {
       `SELECT st.id AS student_id, st.full_name, st.full_name_ar, st.student_code,
               st.guardian_name, st.guardian_phone,
               COALESCE(c.name || ' - ' || sec.name, '') AS class_label,
+              COALESCE(COALESCE(c.name_ar, c.name) || ' - ' || COALESCE(sec.name_ar, sec.name), '') AS class_label_ar,
               COALESCE((SELECT SUM(f.amount) FROM fee_structures f
                          WHERE f.deleted_at IS NULL AND (f.class_id IS NULL OR f.class_id = sec.class_id)), 0)
               - COALESCE((SELECT SUM(p.amount_paid) FROM fee_payments p
@@ -175,6 +177,7 @@ export function feeDebtors(classId?: number | null): Recipient[] {
       guardian_name: (r.guardian_name as string) ?? null,
       phone: (r.guardian_phone as string) ?? null,
       class_label: r.class_label as string,
+      class_label_ar: r.class_label_ar as string,
       amount: Math.round(r.balance),
     }))
 }
@@ -186,7 +189,8 @@ export function absentToday(date: string, sectionId?: number | null): Recipient[
     .prepare(
       `SELECT st.id AS student_id, st.full_name, st.full_name_ar, st.student_code,
               st.guardian_name, st.guardian_phone,
-              COALESCE(c.name || ' - ' || sec.name, '') AS class_label
+              COALESCE(c.name || ' - ' || sec.name, '') AS class_label,
+              COALESCE(COALESCE(c.name_ar, c.name) || ' - ' || COALESCE(sec.name_ar, sec.name), '') AS class_label_ar
          FROM attendance a
          JOIN students st ON st.id = a.student_id
          LEFT JOIN sections sec ON sec.id = st.section_id
@@ -204,6 +208,7 @@ export function absentToday(date: string, sectionId?: number | null): Recipient[
     guardian_name: (r.guardian_name as string) ?? null,
     phone: (r.guardian_phone as string) ?? null,
     class_label: r.class_label as string,
+    class_label_ar: r.class_label_ar as string,
   }))
 }
 
@@ -212,7 +217,8 @@ export function oneStudent(studentId: number): Recipient {
     .prepare(
       `SELECT st.id AS student_id, st.full_name, st.full_name_ar, st.student_code,
               st.guardian_name, st.guardian_phone,
-              COALESCE(c.name || ' - ' || sec.name, '') AS class_label
+              COALESCE(c.name || ' - ' || sec.name, '') AS class_label,
+              COALESCE(COALESCE(c.name_ar, c.name) || ' - ' || COALESCE(sec.name_ar, sec.name), '') AS class_label_ar
          FROM students st
          LEFT JOIN sections sec ON sec.id = st.section_id
          LEFT JOIN classes c ON c.id = sec.class_id
@@ -228,5 +234,6 @@ export function oneStudent(studentId: number): Recipient {
     guardian_name: (r.guardian_name as string) ?? null,
     phone: (r.guardian_phone as string) ?? null,
     class_label: r.class_label as string,
+    class_label_ar: r.class_label_ar as string,
   }
 }
