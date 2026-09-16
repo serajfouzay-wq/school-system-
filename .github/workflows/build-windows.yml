@@ -39,6 +39,11 @@ jobs:
       - name: Build installer
         # signAndEditExecutable is off in the committed config so a Linux host
         # can build at all; a Windows runner can do it properly.
+        #
+        # bash, not PowerShell: PowerShell splits `-c.win.<key>=<value>` so
+        # electron-builder reads ".win.<key>=<value>" as a config *file path*
+        # and dies with ENOENT.
+        shell: bash
         run: npx electron-builder --win --x64 --publish never -c.win.signAndEditExecutable=true
 
       - name: Check the installer really contains a Windows database engine
