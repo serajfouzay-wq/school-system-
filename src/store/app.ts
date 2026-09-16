@@ -12,6 +12,7 @@ export type Screen =
   | { name: 'attendance' }
   | { name: 'timetable' }
   | { name: 'grades' }
+  | { name: 'exams' }
   | { name: 'fees' }
   | { name: 'classes' }
   | { name: 'announcements' }

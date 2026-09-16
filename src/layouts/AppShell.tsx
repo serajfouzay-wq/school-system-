@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Home, Users, GraduationCap, CalendarCheck, CalendarDays, ClipboardList,
-  Wallet, Layers, Megaphone, FileBarChart, Settings as SettingsIcon,
+  Wallet, Layers, Megaphone, FileBarChart, Settings as SettingsIcon, FileQuestion,
   Trash2, HelpCircle, Search, LogOut, Languages, ChevronLeft, X, UserRoundCog,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +24,7 @@ const NAV: NavItem[] = [
   { screen: 'attendance', labelKey: 'nav.attendance', icon: <CalendarCheck size={22} /> },
   { screen: 'timetable', labelKey: 'nav.timetable', icon: <CalendarDays size={22} /> },
   { screen: 'grades', labelKey: 'nav.grades', icon: <ClipboardList size={22} /> },
+  { screen: 'exams', labelKey: 'nav.exams', icon: <FileQuestion size={22} /> },
   { screen: 'fees', labelKey: 'nav.fees', icon: <Wallet size={22} /> },
   { screen: 'classes', labelKey: 'nav.classes', icon: <Layers size={22} /> },
   { screen: 'announcements', labelKey: 'nav.announcements', icon: <Megaphone size={22} /> },

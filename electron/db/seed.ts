@@ -9,6 +9,7 @@ import { saveGrades, saveTeacherRemarks } from '../services/grades'
 import { saveFeeStructure, recordPayment } from '../services/fees'
 import { saveTimetableEntry, defaultPeriods } from '../services/timetable'
 import { saveAnnouncement, saveEvent } from '../services/communication'
+import { saveExam, saveQuestion } from '../services/exams'
 
 /** Names are given in both scripts so every screen can be checked in Arabic. */
 const FIRST = [
@@ -229,6 +230,32 @@ export function seedDemoData(): void {
     }
   })
   ttTx()
+
+  // A ready-made online exam so the module has something to show.
+  const mathsSubject = subjects.find((s) => s.name === 'Mathematics') ?? subjects[0]
+  const demoExam = saveExam(
+    {
+      title: 'Maths quiz - numbers to 100',
+      title_ar: 'اختبار الرياضيات - الأعداد حتى 100',
+      subject_id: mathsSubject.id,
+      section_id: sections[0].id,
+      exam_term_id: midterm.id,
+      duration_minutes: 20,
+      shuffle: 1,
+      instructions: 'Answer every question. You may go back and change an answer before you hand in.',
+      status: 'ready',
+    },
+    1
+  )
+  const demoQuestions: Parameters<typeof saveQuestion>[0][] = [
+    { exam_id: demoExam.id, kind: 'mcq', text: 'What is 7 + 8?', marks: 2, options: ['13', '14', '15', '16'], correct: '2' },
+    { exam_id: demoExam.id, kind: 'mcq', text: 'Which number is the largest?', marks: 2, options: ['45', '54', '39', '51'], correct: '1' },
+    { exam_id: demoExam.id, kind: 'truefalse', text: '20 is an even number.', marks: 1, correct: 'true' },
+    { exam_id: demoExam.id, kind: 'truefalse', text: '9 x 3 equals 28.', marks: 1, correct: 'false' },
+    { exam_id: demoExam.id, kind: 'short', text: 'What is 100 minus 35?', marks: 2, correct: '65|sixty five|sixty-five' },
+  ]
+  const examTx = db.transaction(() => { for (const q of demoQuestions) saveQuestion(q) })
+  examTx()
 
   // Announcements and calendar
   saveAnnouncement({ title: 'Parent–teacher meeting on Thursday', body: 'All guardians are invited from 4pm to 6pm in the main hall.' }, 1)

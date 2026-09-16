@@ -12,6 +12,9 @@ import * as fees from './services/fees'
 import * as timetable from './services/timetable'
 import * as communication from './services/communication'
 import * as dashboard from './services/dashboard'
+import * as exams from './services/exams'
+import * as examServer from './services/examServer'
+import * as whatsapp from './services/whatsapp'
 import * as recycle from './services/recycle'
 import * as backup from './services/backup'
 import { parseCsv, writeCsv } from './services/exporter'
@@ -159,6 +162,44 @@ const handlers: Record<string, Handler> = {
   'events.list': (p) => communication.listEvents(p ?? {}),
   'events.save': (p) => { communication.saveEvent(p); return true },
   'events.delete': ({ id }) => { communication.deleteEvent(id, currentUserId); return true },
+
+  /* ---- exams ---- */
+  'exams.list': () => exams.listExams(),
+  'exams.get': ({ id }) => exams.getExam(id),
+  'exams.save': (p) => exams.saveExam(p, currentUserId),
+  'exams.delete': ({ id }) => { exams.deleteExam(id, currentUserId); return true },
+  'exams.questions': ({ examId }) => exams.listQuestions(examId),
+  'exams.saveQuestion': (p) => exams.saveQuestion(p),
+  'exams.deleteQuestion': ({ id }) => { exams.deleteQuestion(id, currentUserId); return true },
+  'exams.reorderQuestions': ({ examId, ids }) => { exams.reorderQuestions(examId, ids); return true },
+  'exams.openSession': async ({ examId }) => {
+    // Starting a sitting also starts the little web server the phones use.
+    const session = exams.openSession(examId, currentUserId)
+    const server = await examServer.start(Number(school.getPreference('exam_port') ?? 8080))
+    return { session, server }
+  },
+  'exams.closeSession': ({ sessionId }) => { exams.closeSession(sessionId); return true },
+  'exams.activeSession': ({ examId }) => exams.activeSession(examId),
+  'exams.attempts': ({ sessionId }) => exams.listAttempts(sessionId),
+  'exams.attemptDetail': ({ attemptId }) => exams.attemptDetail(attemptId),
+  'exams.overrideAnswer': ({ answerId, correct }) => { exams.overrideAnswer(answerId, correct); return true },
+  'exams.remark': ({ attemptId }) => exams.markAttempt(attemptId),
+  'exams.pushToGrades': ({ sessionId }) => exams.pushToGrades(sessionId),
+  'examServer.status': () => examServer.status(),
+  'examServer.start': async ({ port }) => examServer.start(port ?? 8080),
+  'examServer.stop': () => examServer.stop(),
+
+  /* ---- WhatsApp ---- */
+  'whatsapp.feeDebtors': ({ classId }) => whatsapp.feeDebtors(classId ?? null),
+  'whatsapp.absentToday': ({ date, sectionId }) => whatsapp.absentToday(date, sectionId ?? null),
+  'whatsapp.oneStudent': ({ studentId }) => whatsapp.oneStudent(studentId),
+  'whatsapp.prepare': ({ recipients, purpose, lang, extra }) =>
+    whatsapp.prepare(recipients, purpose, lang, extra ?? {}),
+  'whatsapp.send': ({ message, purpose }) => { whatsapp.send(message, purpose, currentUserId); return true },
+  'whatsapp.contactedToday': ({ purpose }) => whatsapp.contactedToday(purpose),
+  'whatsapp.history': ({ studentId }) => whatsapp.history(studentId),
+  'whatsapp.template': ({ purpose, lang }) => whatsapp.getTemplate(purpose, lang),
+  'whatsapp.countryCode': () => whatsapp.countryCode(),
 
   /* ---- dashboard & search ---- */
   'dashboard.summary': () => dashboard.dashboardSummary(),

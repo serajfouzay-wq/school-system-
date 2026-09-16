@@ -86,6 +86,10 @@ electron/                  Main process — owns the database, nothing else can 
     school.ts  users.ts  academics.ts  students.ts  staff.ts
     attendance.ts  grades.ts  fees.ts  timetable.ts
     communication.ts  dashboard.ts  recycle.ts  backup.ts  exporter.ts
+    exams.ts               Exam papers, auto-marking, results into Grades
+    examServer.ts          The LAN web server students' phones connect to
+    examStudentPage.ts     The page those phones load, as one self-contained file
+    whatsapp.ts            Message building, phone normalising, send log
   ipc.ts                   Every action the renderer may call, by name
   main.ts / preload.ts     Window, menu, and the single contextBridge
 
@@ -99,7 +103,7 @@ src/                       Renderer — React, no filesystem or database access
   layouts/AppShell.tsx     Sidebar + global search
   features/                One folder per module
     setup/ auth/ dashboard/ students/ staff/ academics/
-    attendance/ timetable/ grades/ fees/ communication/
+    attendance/ timetable/ grades/ exams/ fees/ communication/
     reports/ settings/ recycle/ help/
   print/                   Report cards, receipts, ID cards, reports (HTML → PDF)
   assets/fonts/            Cairo, bundled so Arabic works with no internet
@@ -142,6 +146,46 @@ the right one per language.
 
 ---
 
+## Online exams over the school Wi-Fi
+
+The office computer *is* the server. When a teacher presses **Start the exam**,
+the app opens a small HTTP server on the local network and shows a six-character
+join code, the address, and a QR code to put on the projector. Students open
+that address on their own phones, pick their name from the class list, type the
+code, and answer. Nothing leaves the building and no internet is involved.
+
+Marking is automatic for multiple-choice and true/false. A typed answer is
+matched against the alternatives the teacher listed (`65|sixty five`), after
+normalising case, spacing and the usual Arabic variations — أ/إ/آ, ة/ه, ى/ي and
+diacritics. **A typed answer that does not match is flagged for the teacher, not
+marked wrong**, because spelling and phrasing vary and a machine should not fail
+a child over it. Finished results go into the normal Grades table, so an online
+exam reaches the report card exactly like a paper one.
+
+What the server deliberately does not do: it never sends a correct answer to a
+phone (the paper is stripped before it leaves), it refuses a second attempt by
+the same student, it only answers the handful of requests an exam needs, and it
+shuts down with the app.
+
+## WhatsApp to parents
+
+There is no WhatsApp account, API key or approval to arrange. The app builds the
+message — fee reminder, absent today, report card ready, or your own text — and
+opens WhatsApp with the parent's number and the text already filled in. Staff
+press send in WhatsApp itself.
+
+This is a deliberate choice. Sending automatically needs a Meta Business account
+with pre-approved templates and a per-message charge; the unofficial libraries
+that drive WhatsApp Web in the background break WhatsApp's terms and get school
+numbers banned. The click-to-send route costs nothing and works today.
+
+The tedious part — knowing who still needs contacting — is what the app handles:
+a queue for everyone who owes fees or was absent, a tick against each one as it
+goes, and a log so nobody is messaged twice. Local numbers (`0912345678`) are
+converted to international form using the country code in Settings.
+
+---
+
 ## Notes for whoever picks this up next
 
 - **`build/icon.png` is a placeholder.** Replace it with real branding before
@@ -154,5 +198,12 @@ the right one per language.
   A true `.xlsx` writer would need a library.
 - **Library and Transport modules are not built** — they were scoped as
   post-v1 in the brief.
-- **SMS/email notifications are not built.** They are the only feature in the
-  brief that needs the internet, and were marked optional.
+- **SMS/email notifications are not built.** WhatsApp click-to-send covers the
+  same need without an account or a per-message cost.
+- **Exams are LAN-only by design.** Students must be on the school Wi-Fi.
+  Taking exams from home would need a rented server, student accounts and a
+  monthly cost, and would stop the app being offline-first.
+- **Exam identity is by name, not password.** A student picks their name from
+  the class list and types the join code. The teacher sees who has joined in
+  real time and one attempt per student is enforced, which suits a supervised
+  room. Unsupervised exams would need per-student credentials.

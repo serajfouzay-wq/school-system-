@@ -3,6 +3,7 @@ import path from 'node:path'
 import { getDb, closeDb, purgeExpiredBinEntries } from './db/index'
 import { registerIpc } from './ipc'
 import { scheduleAutoBackup, stopAutoBackup } from './services/backup'
+import { stop as stopExamServer } from './services/examServer'
 
 // Pin the data-folder name explicitly. Electron otherwise derives it from
 // whichever package.json it finds, so the school's database could land in a
@@ -123,5 +124,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   stopAutoBackup()
+  // Never leave the exam server listening after the app is gone.
+  stopExamServer()
   closeDb()
 })

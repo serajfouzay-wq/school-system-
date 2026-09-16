@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Check, X, Clock, FileCheck, Save, CalendarCheck, Users, Printer } from 'lucide-react'
+import { Check, X, Clock, FileCheck, Save, CalendarCheck, Users, Printer, MessageCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
 import { useAsync, useUnsavedGuard } from '@/lib/hooks'
 import { useApp, useLang, useNumerals, useCalendarType } from '@/store/app'
-import type { AttendanceStatus, StaffAttendanceStatus } from '@shared/types'
+import type { AttendanceStatus, StaffAttendanceStatus, Recipient } from '@shared/types'
 import { Button } from '@/components/ui/Button'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Select, TextInput } from '@/components/ui/Field'
@@ -17,6 +17,7 @@ import { AttendanceCalendar } from './AttendanceCalendar'
 import { formatDate, todayIso, monthIso } from '@/lib/format'
 import { usePrinting } from '@/lib/printing'
 import { gridReportHtml } from '@/print/templates'
+import { WhatsAppQueue } from '@/features/communication/WhatsAppQueue'
 
 const STUDENT_STATUSES: { value: AttendanceStatus; labelKey: string; icon: React.ReactNode; on: string }[] = [
   { value: 'present', labelKey: 'attendance.present', icon: <Check size={18} />, on: 'bg-emerald-600 border-emerald-600 text-white' },
@@ -72,6 +73,8 @@ function StudentAttendance() {
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [month, setMonth] = useState(monthIso())
+  const [waOpen, setWaOpen] = useState(false)
+  const [waRecipients, setWaRecipients] = useState<Recipient[]>([])
 
   const { data: sections } = useAsync(() => api.sections.list(), [])
   const { data: rows, loading, error, reload } = useAsync(
@@ -188,6 +191,19 @@ function StudentAttendance() {
                 </Button>
                 <p className="text-sm text-ink-500 dark:text-ink-300">{t('attendance.thenTapExceptions')}</p>
                 <div className="flex flex-wrap gap-2">
+                  {/* Only offer this once the register is saved, or the list
+                      would be built from marks that are not recorded yet. */}
+                  <Button
+                    variant="success"
+                    disabled={dirty}
+                    icon={<MessageCircle size={18} />}
+                    onClick={async () => {
+                      setWaRecipients(await api.whatsapp.absentToday(date, Number(sectionId)))
+                      setWaOpen(true)
+                    }}
+                  >
+                    {t('whatsapp.purposeAbsence')}
+                  </Button>
                   <Button onClick={() => void printSheet()} icon={<Printer size={18} />}>{t('attendance.printSheet')}</Button>
                   <Button size="lg" variant="primary" loading={saving} disabled={!dirty} onClick={() => void save()} icon={<Save size={20} />}>
                     {t('attendance.saveAttendance')}
@@ -251,6 +267,8 @@ function StudentAttendance() {
           </Card>
         </div>
       )}
+
+      <WhatsAppQueue recipients={waRecipients} purpose="absence" open={waOpen} onClose={() => setWaOpen(false)} />
     </div>
   )
 }

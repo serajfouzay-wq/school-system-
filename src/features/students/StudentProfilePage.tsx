@@ -14,6 +14,7 @@ import { ConfirmDialog } from '@/components/ui/Modal'
 import { Avatar } from '@/components/ui/Avatar'
 import { StudentWizard } from './StudentWizard'
 import { AttendanceCalendar } from '@/features/attendance/AttendanceCalendar'
+import { WhatsAppButton } from '@/features/communication/WhatsAppQueue'
 import { formatDate, formatMoney, formatNumber, studentName, classLabel, monthIso } from '@/lib/format'
 import { usePrinting } from '@/lib/printing'
 import { idCardsHtml } from '@/print/templates'
@@ -126,6 +127,11 @@ export function StudentProfilePage({ id }: { id: number }) {
               <InfoRow label={t('common.address')} value={<span className="inline-flex items-center gap-1.5"><MapPin size={15} />{student.guardian_address}</span>} />
             )}
             {student.emergency_contact && <InfoRow label={t('students.emergencyContact')} value={student.emergency_contact} />}
+            {student.guardian_phone && (
+              <div className="pt-1">
+                <WhatsAppButton studentId={student.id} purpose="custom" size="md" />
+              </div>
+            )}
           </div>
 
           {student.medical_notes && (

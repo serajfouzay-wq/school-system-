@@ -299,3 +299,101 @@ export interface ApiResult<T> {
   data?: T
   error?: string
 }
+
+/* ---------- Online exams ---------- */
+
+export type QuestionKind = 'mcq' | 'truefalse' | 'short'
+
+export interface Exam {
+  id: number
+  title: string
+  title_ar: string | null
+  subject_id: number | null
+  section_id: number | null
+  exam_term_id: number | null
+  duration_minutes: number
+  shuffle: 0 | 1
+  instructions: string | null
+  status: 'draft' | 'ready' | 'closed'
+  question_count?: number
+  total_marks?: number
+  subject_name?: string | null
+  section_label?: string | null
+  term_name?: string | null
+}
+
+export interface ExamQuestion {
+  id: number
+  exam_id: number
+  kind: QuestionKind
+  text: string
+  marks: number
+  options: string[]
+  correct: string | null
+  order_index: number
+}
+
+export interface ExamAttempt {
+  id: number
+  student_id: number
+  full_name: string
+  full_name_ar: string | null
+  student_code: string
+  started_at: string
+  submitted_at: string | null
+  score: number | null
+  max_score: number | null
+  needs_review: 0 | 1
+  pushed_to_grades: 0 | 1
+}
+
+export interface AttemptAnswer {
+  id: number
+  question_id: number
+  text: string
+  kind: QuestionKind
+  marks: number
+  options: string[]
+  correct: string | null
+  answer: string | null
+  is_correct: boolean | null
+  awarded_marks: number
+}
+
+export interface AttemptDetail {
+  attempt: Record<string, unknown>
+  answers: AttemptAnswer[]
+}
+
+/** The little web server students' phones connect to over the school Wi-Fi. */
+export interface ServerStatus {
+  running: boolean
+  port: number
+  addresses: string[]
+  url: string | null
+}
+
+/* ---------- WhatsApp ---------- */
+
+export type MessagePurpose = 'fees' | 'absence' | 'reportCard' | 'custom'
+
+export interface Recipient {
+  student_id: number
+  student_name: string
+  /** Kept separately so an English message does not carry an Arabic name. */
+  student_name_ar?: string | null
+  student_code: string
+  guardian_name: string | null
+  phone: string | null
+  amount?: number
+  class_label?: string
+}
+
+export interface PreparedMessage {
+  student_id: number
+  student_name: string
+  phone: string | null
+  body: string
+  link: string | null
+  problem: string | null
+}

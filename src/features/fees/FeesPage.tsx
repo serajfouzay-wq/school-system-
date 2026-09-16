@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Wallet, Plus, Printer, Receipt, TrendingUp, Trash2, Pencil, Bell, FolderInput } from 'lucide-react'
+import { Wallet, Plus, Printer, Receipt, TrendingUp, Trash2, Pencil, Bell, FolderInput, MessageCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { api } from '@/lib/api'
@@ -14,6 +14,8 @@ import { PageHeader, FilterBar, Tabs } from '@/components/ui/PageHeader'
 import { Modal, ConfirmDialog } from '@/components/ui/Modal'
 import { ModuleTour } from '@/components/ui/Tour'
 import { formatMoney, formatDate, studentName, classLabel, localName, todayIso } from '@/lib/format'
+import { WhatsAppQueue } from '@/features/communication/WhatsAppQueue'
+import type { Recipient } from '@shared/types'
 import { usePrinting } from '@/lib/printing'
 import { receiptHtml, reportHtml } from '@/print/templates'
 
@@ -149,6 +151,8 @@ function Balances() {
   const [classId, setClassId] = useState('')
   const [onlyOwing, setOnlyOwing] = useState(false)
   const [paying, setPaying] = useState<StudentFeeSummary | null>(null)
+  const [waOpen, setWaOpen] = useState(false)
+  const [waRecipients, setWaRecipients] = useState<Recipient[]>([])
   const debounced = useDebounced(search, 250)
 
   const { data: classes } = useAsync(() => api.classes.list(), [])
@@ -207,6 +211,17 @@ function Balances() {
         <div className="min-w-[16rem]">
           <Toggle checked={onlyOwing} onChange={setOnlyOwing} label={t('fees.onlyOutstanding')} />
         </div>
+        <Button
+          variant="success"
+          icon={<MessageCircle size={18} />}
+          onClick={async () => {
+            // Everyone who still owes, in one queue.
+            setWaRecipients(await api.whatsapp.feeDebtors(classId ? Number(classId) : null))
+            setWaOpen(true)
+          }}
+        >
+          {t('whatsapp.sendAll')}
+        </Button>
         <Button
           onClick={() =>
             void exportCsv(
@@ -269,7 +284,29 @@ function Balances() {
                     <td className="p-3">
                       <span className="flex justify-end gap-2">
                         {row.balance > 0 && (
-                          <Button size="sm" onClick={() => void printReminder(row)} icon={<Bell size={16} />}>{t('fees.sendReminder')}</Button>
+                          <>
+                            <Button
+                              size="sm"
+                              variant="success"
+                              icon={<MessageCircle size={16} />}
+                              onClick={() => {
+                                setWaRecipients([{
+                                  student_id: row.student.id,
+                                  student_name: row.student.full_name,
+                                  student_name_ar: row.student.full_name_ar,
+                                  student_code: row.student.student_code,
+                                  guardian_name: row.student.guardian_name ?? null,
+                                  phone: row.student.guardian_phone ?? null,
+                                  class_label: classLabel(row.student, lang),
+                                  amount: Math.round(row.balance),
+                                }])
+                                setWaOpen(true)
+                              }}
+                            >
+                              {t('whatsapp.send')}
+                            </Button>
+                            <Button size="sm" onClick={() => void printReminder(row)} icon={<Bell size={16} />}>{t('fees.sendReminder')}</Button>
+                          </>
                         )}
                         <Button size="sm" variant="primary" onClick={() => setPaying(row)} icon={<Plus size={16} />}>{t('fees.recordPayment')}</Button>
                       </span>
@@ -283,6 +320,8 @@ function Balances() {
       </Card>
 
       {paying && <PaymentDialog summary={paying} onClose={() => setPaying(null)} onSaved={() => { setPaying(null); reload() }} />}
+
+      <WhatsAppQueue recipients={waRecipients} purpose="fees" open={waOpen} onClose={() => setWaOpen(false)} />
     </div>
   )
 }

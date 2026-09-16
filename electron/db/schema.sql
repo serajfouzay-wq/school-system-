@@ -292,3 +292,94 @@ CREATE INDEX IF NOT EXISTS idx_grades_lookup      ON grades(exam_term_id, studen
 CREATE INDEX IF NOT EXISTS idx_payments_student   ON fee_payments(student_id);
 CREATE INDEX IF NOT EXISTS idx_timetable_section  ON timetable_entries(section_id, day_of_week);
 CREATE INDEX IF NOT EXISTS idx_recycle_open       ON recycle_bin(restored_at, deleted_at);
+
+/* ---------------------------------------------------------------
+   Online exams taken on the school's own Wi-Fi.
+   The office computer hosts; students answer on their own phones.
+   --------------------------------------------------------------- */
+
+CREATE TABLE IF NOT EXISTS exams (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  school_id        INTEGER NOT NULL REFERENCES schools(id),
+  title            TEXT NOT NULL,
+  title_ar         TEXT,
+  subject_id       INTEGER REFERENCES subjects(id),
+  section_id       INTEGER REFERENCES sections(id),
+  exam_term_id     INTEGER REFERENCES exam_terms(id),
+  duration_minutes INTEGER NOT NULL DEFAULT 30,
+  shuffle          INTEGER NOT NULL DEFAULT 1,
+  instructions     TEXT,
+  status           TEXT NOT NULL DEFAULT 'draft', -- draft | ready | closed
+  created_by       INTEGER REFERENCES users(id),
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  deleted_at       TEXT
+);
+
+CREATE TABLE IF NOT EXISTS exam_questions (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  exam_id      INTEGER NOT NULL REFERENCES exams(id),
+  kind         TEXT NOT NULL DEFAULT 'mcq', -- mcq | truefalse | short
+  text         TEXT NOT NULL,
+  marks        REAL NOT NULL DEFAULT 1,
+  -- JSON array of choice strings, for mcq
+  options_json TEXT,
+  -- mcq: index of the right choice. truefalse: 'true'/'false'. short: the
+  -- accepted answer(s), separated by |
+  correct      TEXT,
+  order_index  INTEGER NOT NULL DEFAULT 0,
+  deleted_at   TEXT
+);
+
+/* One sitting of an exam. The join code is what students type on their phone. */
+CREATE TABLE IF NOT EXISTS exam_sessions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  exam_id     INTEGER NOT NULL REFERENCES exams(id),
+  join_code   TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'open', -- open | closed
+  started_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  ended_at    TEXT,
+  opened_by   INTEGER REFERENCES users(id),
+  deleted_at  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS exam_attempts (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id    INTEGER NOT NULL REFERENCES exam_sessions(id),
+  student_id    INTEGER NOT NULL REFERENCES students(id),
+  started_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  submitted_at  TEXT,
+  score         REAL,
+  max_score     REAL,
+  needs_review  INTEGER NOT NULL DEFAULT 0,
+  pushed_to_grades INTEGER NOT NULL DEFAULT 0,
+  deleted_at    TEXT,
+  UNIQUE(session_id, student_id)
+);
+
+CREATE TABLE IF NOT EXISTS exam_answers (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  attempt_id    INTEGER NOT NULL REFERENCES exam_attempts(id),
+  question_id   INTEGER NOT NULL REFERENCES exam_questions(id),
+  answer        TEXT,
+  is_correct    INTEGER,          -- NULL until marked
+  awarded_marks REAL NOT NULL DEFAULT 0,
+  UNIQUE(attempt_id, question_id)
+);
+
+/* A record of every WhatsApp message prepared, so the office can see who has
+   already been contacted and nobody gets messaged twice. */
+CREATE TABLE IF NOT EXISTS message_log (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  student_id INTEGER REFERENCES students(id),
+  channel    TEXT NOT NULL DEFAULT 'whatsapp',
+  purpose    TEXT NOT NULL,           -- fees | absence | reportCard | custom
+  phone      TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  sent_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  sent_by    INTEGER REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_exam_questions   ON exam_questions(exam_id, order_index);
+CREATE INDEX IF NOT EXISTS idx_exam_attempts    ON exam_attempts(session_id);
+CREATE INDEX IF NOT EXISTS idx_exam_answers     ON exam_answers(attempt_id);
+CREATE INDEX IF NOT EXISTS idx_message_log      ON message_log(student_id, sent_at);

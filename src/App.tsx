@@ -12,6 +12,7 @@ import { StaffProfilePage } from '@/features/staff/StaffProfilePage'
 import { AttendancePage } from '@/features/attendance/AttendancePage'
 import { TimetablePage } from '@/features/timetable/TimetablePage'
 import { GradesPage } from '@/features/grades/GradesPage'
+import { ExamsPage } from '@/features/exams/ExamsPage'
 import { FeesPage } from '@/features/fees/FeesPage'
 import { AcademicsPage } from '@/features/academics/AcademicsPage'
 import { AnnouncementsPage } from '@/features/communication/AnnouncementsPage'
@@ -82,6 +83,7 @@ function renderScreen(screen: ReturnType<typeof useApp.getState>['screen']) {
     case 'attendance': return <AttendancePage />
     case 'timetable': return <TimetablePage />
     case 'grades': return <GradesPage />
+    case 'exams': return <ExamsPage />
     case 'fees': return <FeesPage />
     case 'classes': return <AcademicsPage />
     case 'announcements': return <AnnouncementsPage />

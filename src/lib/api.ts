@@ -4,6 +4,8 @@ import type {
   DashboardSummary, StudentProfile, ReportCardData, ReceiptData,
   StudentFeeSummary, SearchHit, RecycleBinEntry, BackupLogEntry,
   TeacherAssignment, AttendanceStatus, StaffAttendanceStatus,
+  Exam, ExamQuestion, ExamAttempt, AttemptDetail, ServerStatus,
+  Recipient, PreparedMessage, MessagePurpose,
 } from '@shared/types'
 
 declare global {
@@ -187,6 +189,46 @@ export const api = {
     list: (filter?: { from?: string; to?: string }) => call<CalendarEvent[]>('events.list', filter),
     save: (input: Record<string, unknown>) => call<boolean>('events.save', input),
     remove: (id: number) => call<boolean>('events.delete', { id }),
+  },
+
+  exams: {
+    list: () => call<Exam[]>('exams.list'),
+    get: (id: number) => call<Exam | null>('exams.get', { id }),
+    save: (input: Record<string, unknown>) => call<Exam>('exams.save', input),
+    remove: (id: number) => call<boolean>('exams.delete', { id }),
+    questions: (examId: number) => call<ExamQuestion[]>('exams.questions', { examId }),
+    saveQuestion: (input: Record<string, unknown>) => call<ExamQuestion>('exams.saveQuestion', input),
+    removeQuestion: (id: number) => call<boolean>('exams.deleteQuestion', { id }),
+    reorderQuestions: (examId: number, ids: number[]) => call<boolean>('exams.reorderQuestions', { examId, ids }),
+    openSession: (examId: number) =>
+      call<{ session: { id: number; join_code: string }; server: ServerStatus }>('exams.openSession', { examId }),
+    closeSession: (sessionId: number) => call<boolean>('exams.closeSession', { sessionId }),
+    activeSession: (examId: number) =>
+      call<{ id: number; join_code: string; started_at: string } | null>('exams.activeSession', { examId }),
+    attempts: (sessionId: number) => call<ExamAttempt[]>('exams.attempts', { sessionId }),
+    attemptDetail: (attemptId: number) => call<AttemptDetail>('exams.attemptDetail', { attemptId }),
+    overrideAnswer: (answerId: number, correct: boolean) => call<boolean>('exams.overrideAnswer', { answerId, correct }),
+    remark: (attemptId: number) => call<{ score: number; maxScore: number; needsReview: boolean }>('exams.remark', { attemptId }),
+    pushToGrades: (sessionId: number) => call<{ pushed: number; skipped: number }>('exams.pushToGrades', { sessionId }),
+  },
+
+  examServer: {
+    status: () => call<ServerStatus>('examServer.status'),
+    start: (port?: number) => call<ServerStatus>('examServer.start', { port }),
+    stop: () => call<ServerStatus>('examServer.stop'),
+  },
+
+  whatsapp: {
+    feeDebtors: (classId?: number | null) => call<Recipient[]>('whatsapp.feeDebtors', { classId }),
+    absentToday: (date: string, sectionId?: number | null) => call<Recipient[]>('whatsapp.absentToday', { date, sectionId }),
+    oneStudent: (studentId: number) => call<Recipient>('whatsapp.oneStudent', { studentId }),
+    prepare: (recipients: Recipient[], purpose: MessagePurpose, lang: 'en' | 'ar', extra?: Record<string, string>) =>
+      call<PreparedMessage[]>('whatsapp.prepare', { recipients, purpose, lang, extra }),
+    send: (message: PreparedMessage, purpose: MessagePurpose) => call<boolean>('whatsapp.send', { message, purpose }),
+    contactedToday: (purpose: MessagePurpose) => call<number[]>('whatsapp.contactedToday', { purpose }),
+    history: (studentId: number) =>
+      call<{ id: number; purpose: string; phone: string; body: string; sent_at: string }[]>('whatsapp.history', { studentId }),
+    countryCode: () => call<string>('whatsapp.countryCode'),
   },
 
   dashboard: { summary: () => call<DashboardSummary>('dashboard.summary') },
