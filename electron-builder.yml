@@ -12,6 +12,12 @@ files:
   - package.json
   - "!**/*.map"
 
+# Chromium ships 55 locale files (41 MB) for its own menus and dialogs. The app
+# is English and Arabic only, so the rest are dead weight in every download.
+electronLanguages:
+  - en-US
+  - ar
+
 # Swaps in the right native binary when cross-building, and fails the build
 # rather than shipping a package that cannot open its own database.
 afterPack: build/after-pack.cjs
