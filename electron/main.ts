@@ -69,6 +69,16 @@ function reportFatal(stage: string, error: unknown): void {
 process.on('uncaughtException', (e) => reportFatal('running', e))
 process.on('unhandledRejection', (e) => reportFatal('running', e))
 
+/** The window icon, if it was packaged; undefined rather than a dead path. */
+function windowIcon(): string | undefined {
+  try {
+    const file = path.join(process.env.APP_ROOT!, 'build', 'icon.png')
+    return fs.existsSync(file) ? file : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -78,7 +88,9 @@ function createWindow(): void {
     show: false,
     backgroundColor: '#f8fafc',
     title: 'School Management System',
-    icon: path.join(process.env.APP_ROOT!, 'build', 'icon.png'),
+    // Only pass an icon that is really there: a path into the package that
+    // does not exist is worth neither a warning nor a risk at startup.
+    ...(windowIcon() ? { icon: windowIcon()! } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

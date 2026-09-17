@@ -9,6 +9,9 @@ directories:
 files:
   - dist/**/*
   - dist-electron/**/*
+  # The window and taskbar icon is read from here at runtime. Without it the
+  # path in main.ts points at nothing inside the package.
+  - build/icon.png
   - package.json
   - "!**/*.map"
 
