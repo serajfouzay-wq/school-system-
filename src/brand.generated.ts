@@ -2,25 +2,34 @@
 import type { Brand } from './brand'
 
 const brand: Brand = {
-  "id": "default",
-  "appName": "School System",
-  "appNameAr": "نظام المدرسة",
-  "color": "#1f5ceb",
+  "id": "alnoor",
+  "appName": "Al Noor School System",
+  "appNameAr": "نظام مدرسة النور",
+  "color": "#0f766e",
   "palette": {
-    "50": "#f1f6ff",
-    "100": "#dfeaff",
-    "200": "#c3d7ff",
-    "300": "#9abcff",
-    "400": "#6799ff",
-    "500": "#3f7afe",
-    "600": "#255fe3",
-    "700": "#194dc7",
-    "800": "#1340aa",
-    "900": "#113892",
-    "950": "#041f64"
+    "50": "#f0f8f6",
+    "100": "#dfedeb",
+    "200": "#c1dcd8",
+    "300": "#98c4bf",
+    "400": "#63a7a0",
+    "500": "#389087",
+    "600": "#0f766e",
+    "700": "#00645d",
+    "800": "#00554f",
+    "900": "#024a45",
+    "950": "#002f2c"
   },
   "foreground": "#ffffff",
-  "school": {},
+  "school": {
+    "name": "Al Noor International School",
+    "name_ar": "مدرسة النور الدولية",
+    "address": "Tripoli, Libya",
+    "phone": "+218 91 234 5678",
+    "email": "office@alnoor.example",
+    "currency": "LYD",
+    "country_code": "218",
+    "language": "ar"
+  },
   "notes": null
 }
 

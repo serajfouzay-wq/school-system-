@@ -1,17 +1,17 @@
 /* Written by scripts/brand.mjs — do not edit by hand. */
-/* School System — brand colour #1f5ceb
-   White-on-600 contrast: 5.49:1 */
+/* Al Noor School System — brand colour #0f766e
+   White-on-600 contrast: 5.47:1 */
 :root {
-  --brand-50: 241 246 255;
-  --brand-100: 223 234 255;
-  --brand-200: 195 215 255;
-  --brand-300: 154 188 255;
-  --brand-400: 103 153 255;
-  --brand-500: 63 122 254;
-  --brand-600: 37 95 227;
-  --brand-700: 25 77 199;
-  --brand-800: 19 64 170;
-  --brand-900: 17 56 146;
-  --brand-950: 4 31 100;
+  --brand-50: 240 248 246;
+  --brand-100: 223 237 235;
+  --brand-200: 193 220 216;
+  --brand-300: 152 196 191;
+  --brand-400: 99 167 160;
+  --brand-500: 56 144 135;
+  --brand-600: 15 118 110;
+  --brand-700: 0 100 93;
+  --brand-800: 0 85 79;
+  --brand-900: 2 74 69;
+  --brand-950: 0 47 44;
   --brand-fg: 255 255 255;
 }

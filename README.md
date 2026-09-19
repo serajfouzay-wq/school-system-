@@ -197,7 +197,10 @@ that differs lives in one file under `brands/`:
     "currency": "LYD",
     "country_code": "218",
     "language": "ar"
-  }
+  },
+
+  // Optional. Shown at the top of the Help screen, above the general articles.
+  "notes": "If the program will not start, call Seraj on +218 91 000 0000."
 }
 ```
 
