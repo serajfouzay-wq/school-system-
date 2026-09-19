@@ -560,7 +560,8 @@
     "startTour": "أرني كيف أستخدمه",
     "tourNext": "النصيحة التالية",
     "tourDone": "إنهاء",
-    "noArticles": "لا توجد مقالات مطابقة."
+    "noArticles": "لا توجد مقالات مطابقة.",
+    "fromYourSchool": "من مدرستك"
   },
   "idcard": {
     "title": "بطاقة الطالب",

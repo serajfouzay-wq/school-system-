@@ -560,7 +560,8 @@
     "startTour": "Show me around",
     "tourNext": "Next tip",
     "tourDone": "Finish",
-    "noArticles": "No help articles matched."
+    "noArticles": "No help articles matched.",
+    "fromYourSchool": "From your school"
   },
   "idcard": {
     "title": "Student ID card",

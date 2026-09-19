@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { HelpCircle, Search, ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Card } from '@/components/ui/Card'
+import { Card, CardTitle } from '@/components/ui/Card'
 import { TextInput } from '@/components/ui/Field'
 import { EmptyState } from '@/components/ui/Feedback'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { brand } from '@/lib/brand'
 
 interface Article { id: string; title: string; body: string[] }
 
@@ -87,6 +88,16 @@ export function HelpPage() {
   return (
     <div>
       <PageHeader title={t('help.title')} subtitle={t('help.subtitle')} />
+
+      {/* Whatever the school put in its brand file — a phone number for the
+          person who set this up, opening hours, anything. Sits above the
+          general help because it is the part written for these staff. */}
+      {brand.notes && (
+        <Card className="mb-5">
+          <CardTitle>{t('help.fromYourSchool')}</CardTitle>
+          <p className="whitespace-pre-line">{brand.notes}</p>
+        </Card>
+      )}
 
       <div className="mb-5 max-w-xl">
         <TextInput
