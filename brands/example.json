@@ -1,0 +1,23 @@
+{
+  "id": "alnoor",
+  "appName": "Al Noor School System",
+  "appNameAr": "نظام مدرسة النور",
+  "color": "#1f5ceb",
+  "logo": null,
+
+  "school": {
+    "name": "Al Noor International School",
+    "name_ar": "مدرسة النور الدولية",
+    "address": "Tripoli, Libya",
+    "phone": "+218 91 234 5678",
+    "email": "office@alnoor.example",
+    "currency": "LYD",
+    "country_code": "218",
+    "language": "ar",
+    "calendar_type": "gregorian",
+    "numeral_system": "western",
+    "grading_scale": "percentage"
+  },
+
+  "notes": "Anything you want the staff to see on the Help screen. Optional."
+}

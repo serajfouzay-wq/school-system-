@@ -22,6 +22,7 @@ export interface School {
   academic_year_end: string | null
   currency: string
   language: Language
+  brand_color: string | null
   grading_scale: GradingScale
   calendar_type: 'gregorian' | 'hijri'
   numeral_system: 'western' | 'arabic_indic'

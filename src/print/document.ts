@@ -1,3 +1,4 @@
+import brand from '@/brand.generated'
 import arabicFont from '@/assets/fonts/cairo-arabic.woff2?inline'
 import latinFont from '@/assets/fonts/cairo-latin.woff2?inline'
 
@@ -50,7 +51,7 @@ th { background: #eef2f8; font-weight: 700; }
 .center { text-align: center; }
 .header {
   display: flex; align-items: center; gap: 14px;
-  border-bottom: 3px solid #1f5ceb; padding-bottom: 10px; margin-bottom: 14px;
+  border-bottom: 3px solid ${brand.palette[600]}; padding-bottom: 10px; margin-bottom: 14px;
 }
 .header img { width: 64px; height: 64px; object-fit: contain; }
 .header .school-name { font-size: 18pt; font-weight: 800; }

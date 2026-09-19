@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import {
   School as SchoolIcon, Users, HardDriveDownload, Palette, Languages, Info,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
+import { appNameFor, brand, applyBrandColor } from '@/lib/brand'
 import { useAsync } from '@/lib/hooks'
 import { useApp, useLang, useNumerals, useCalendarType } from '@/store/app'
 import type { Role, User } from '@shared/types'
@@ -67,9 +68,15 @@ function SchoolSettings() {
     academic_year_end: school?.academic_year_end ?? '',
     grading_scale: school?.grading_scale ?? 'percentage',
     logo_path: school?.logo_path ?? null,
+    brand_color: school?.brand_color ?? brand.color,
   })
   const logoSrc = usePhoto(form.logo_path)
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) => setForm((f) => ({ ...f, [k]: v }))
+
+  // Repaint as the colour is chosen, so the choice is judged on the real
+  // interface rather than a swatch; leaving without saving puts it back.
+  const previewColor = (value: string) => { set('brand_color', value); applyBrandColor(value) }
+  useEffect(() => () => applyBrandColor(school?.brand_color), [school?.brand_color])
 
   const save = async () => {
     setBusy(true)
@@ -115,6 +122,31 @@ function SchoolSettings() {
             >
               {form.logo_path ? t('common.changePhoto') : t('common.choosePhoto')}
             </Button>
+          </div>
+        </Field>
+
+        <Field label={t('setup.brandColor')} hint={t('setup.brandColorHelp')}>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="color"
+              value={form.brand_color}
+              onChange={(e) => previewColor(e.target.value)}
+              aria-label={t('setup.brandColor')}
+              className="h-12 w-20 cursor-pointer rounded-xl border bg-transparent p-1"
+              style={{ borderColor: 'var(--app-border)' }}
+            />
+            <TextInput
+              dir="ltr"
+              value={form.brand_color}
+              onChange={(e) => previewColor(e.target.value)}
+              className="w-36 font-mono"
+              aria-label={t('setup.brandColor')}
+            />
+            {form.brand_color.toLowerCase() !== brand.color.toLowerCase() && (
+              <Button variant="ghost" onClick={() => previewColor(brand.color)} icon={<RotateCcw size={18} />}>
+                {t('setup.brandColorReset')}
+              </Button>
+            )}
           </div>
         </Field>
 
@@ -559,6 +591,7 @@ function AboutSettings() {
   const toast = useApp((s) => s.toast)
   const currentRole = useApp((s) => s.user?.role) as Role | undefined
   const touch = useApp((s) => s.touch)
+  const lang = useLang()
   const [confirmDemo, setConfirmDemo] = useState(false)
   const { data: version } = useAsync(() => api.app.version(), [])
   const { data: seeded, reload } = useAsync(() => api.demo.isSeeded(), [])
@@ -569,7 +602,7 @@ function AboutSettings() {
         <CardTitle>{t('settings.about')}</CardTitle>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-ink-500 dark:text-ink-300">{t('app.name')}</span>
+            <span className="text-ink-500 dark:text-ink-300">{appNameFor(lang)}</span>
             <span className="font-bold">{t('app.tagline')}</span>
           </div>
           <div className="flex items-center justify-between gap-3">

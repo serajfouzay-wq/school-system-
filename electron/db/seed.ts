@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { getDb } from './index'
+import brand from '../brand'
+import { getDb, setSetting } from './index'
 import { saveSchool, getSchool } from '../services/school'
 import { createUser, countUsers } from '../services/users'
 import { saveClass, saveSection, saveSubject, saveExamTerm, saveAssignment } from '../services/academics'
@@ -86,19 +87,26 @@ export function seedDemoData(): void {
   const yearEnd = `${now.getFullYear() + 1}-06-30`
 
   if (!getSchool()) {
+    // Whatever the brand file said about this school wins; the fictional
+    // details are only there to fill the gaps a short brand file leaves.
+    const b = brand.school ?? {}
     saveSchool({
-      name: 'Al Noor International School',
-      name_ar: 'مدرسة النور الدولية',
-      address: 'Tripoli, Libya',
-      phone: '+218 91 234 5678',
-      email: 'office@alnoor.example',
+      name: b.name || 'Al Noor International School',
+      name_ar: b.name_ar || 'مدرسة النور الدولية',
+      address: b.address || 'Tripoli, Libya',
+      phone: b.phone || '+218 91 234 5678',
+      email: b.email || 'office@alnoor.example',
       academic_year_start: yearStart,
       academic_year_end: yearEnd,
-      currency: 'LYD',
-      language: 'en',
-      grading_scale: 'percentage',
+      currency: b.currency || 'LYD',
+      language: b.language || 'en',
+      calendar_type: b.calendar_type || 'gregorian',
+      numeral_system: b.numeral_system || 'western',
+      grading_scale: b.grading_scale || 'percentage',
       setup_complete: 1,
     })
+    // The dialling code lives in settings rather than on the school row.
+    setSetting('whatsapp_country_code', b.country_code || '218')
   }
 
   if (countUsers() === 0) {

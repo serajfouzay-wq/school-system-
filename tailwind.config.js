@@ -22,11 +22,18 @@ export default {
         '4xl': ['2.5rem', { lineHeight: '3rem' }],
       },
       colors: {
-        brand: {
-          50: '#eef6ff', 100: '#d9eaff', 200: '#bcdaff', 300: '#8ec2ff',
-          400: '#599fff', 500: '#337bf6', 600: '#1f5ceb', 700: '#1a48d8',
-          800: '#1c3caf', 900: '#1c378a', 950: '#152354',
-        },
+        // Read from CSS variables rather than baked in, so one build can wear
+        // any school's colour. `scripts/brand.mjs` writes the defaults into
+        // src/brand.generated.css; Settings can override them at runtime.
+        brand: Object.fromEntries(
+          [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950].map((step) => [
+            step,
+            `rgb(var(--brand-${step}) / <alpha-value>)`,
+          ])
+        ),
+        // The readable foreground for a brand-coloured surface. White suits
+        // most colours; a pale or amber brand needs dark text instead.
+        'brand-fg': 'rgb(var(--brand-fg) / <alpha-value>)',
         ink: {
           50: '#f7f8fa', 100: '#eef0f4', 200: '#d9dde5', 300: '#b8c0ce',
           400: '#8f9bb0', 500: '#6d7b94', 600: '#57647b', 700: '#475264',

@@ -1,3 +1,9 @@
+/* The school's colour palette. Written by scripts/brand.mjs, and imported
+   first — CSS requires @import before anything else — so the right colours are
+   on screen from the first paint rather than applied by JavaScript a moment
+   later. */
+@import './brand.generated.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

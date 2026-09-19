@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, shell, dialog } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs'
 import os from 'node:os'
+import brand from './brand'
 import { getDb, closeDb, purgeExpiredBinEntries } from './db/index'
 import { registerIpc } from './ipc'
 import { scheduleAutoBackup, stopAutoBackup } from './services/backup'
@@ -9,9 +10,13 @@ import { stop as stopExamServer } from './services/examServer'
 
 // Pin the data-folder name explicitly. Electron otherwise derives it from
 // whichever package.json it finds, so the school's database could land in a
-// different folder in development than in the installed app. Must run before
-// anything asks for `userData`.
-app.setName('school-management-system')
+// different folder in development than in the installed app.
+//
+// Each branded build gets its own folder, so two schools installed on the same
+// computer keep separate databases rather than writing over each other. The
+// unbranded build keeps the original name so existing installations find the
+// data they already have. Must run before anything asks for `userData`.
+app.setName(brand.id && brand.id !== 'default' ? `school-system-${brand.id}` : 'school-management-system')
 
 process.env.APP_ROOT = path.join(__dirname, '..')
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
@@ -87,7 +92,7 @@ function createWindow(): void {
     minHeight: 680,
     show: false,
     backgroundColor: '#f8fafc',
-    title: 'School Management System',
+    title: brand.appName,
     // Only pass an icon that is really there: a path into the package that
     // does not exist is worth neither a warning nor a risk at startup.
     ...(windowIcon() ? { icon: windowIcon()! } : {}),

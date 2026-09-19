@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Delete, GraduationCap, LogIn, KeyRound, ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api, ApiError } from '@/lib/api'
+import { appNameFor } from '@/lib/brand'
 import { useApp, useLang } from '@/store/app'
 import type { User } from '@shared/types'
 import { Button } from '@/components/ui/Button'
@@ -81,7 +82,7 @@ export function LoginScreen() {
             <GraduationCap size={40} />
           </span>
           <h1 className="text-3xl font-bold">
-            {(lang === 'ar' && school?.name_ar) || school?.name || t('app.name')}
+            {(lang === 'ar' && school?.name_ar) || school?.name || appNameFor(lang)}
           </h1>
           <p className="mt-1 text-ink-500 dark:text-ink-300">{t('auth.welcome')}</p>
 

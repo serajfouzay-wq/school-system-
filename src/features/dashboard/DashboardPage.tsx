@@ -4,6 +4,7 @@ import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { api } from '@/lib/api'
+import { brandColor } from '@/lib/brand'
 import { useAsync } from '@/lib/hooks'
 import { useApp, useLang, useNumerals, useCalendarType, useCurrency } from '@/store/app'
 import { formatMoney, formatNumber, formatDate, localName, daysBetween, todayIso } from '@/lib/format'
@@ -128,7 +129,7 @@ export function DashboardPage() {
                     contentStyle={{ background: 'var(--app-surface)', border: '1px solid var(--app-border)', borderRadius: 12 }}
                     formatter={(v: number) => [`${v}%`, t('dashboard.attendanceToday')]}
                   />
-                  <Line type="monotone" dataKey="percent" stroke="#1f5ceb" strokeWidth={3} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="percent" stroke={brandColor(600)} strokeWidth={3} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -150,7 +151,7 @@ export function DashboardPage() {
                     contentStyle={{ background: 'var(--app-surface)', border: '1px solid var(--app-border)', borderRadius: 12 }}
                     formatter={(v: number) => [v, t('dashboard.totalStudents')]}
                   />
-                  <Bar dataKey="count" fill="#1f5ceb" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="count" fill={brandColor(600)} radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

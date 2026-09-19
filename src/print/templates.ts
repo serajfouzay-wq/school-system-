@@ -1,5 +1,6 @@
 import type { ReportCardData, ReceiptData, School, Student } from '@shared/types'
 import type { TFunction } from 'i18next'
+import brand from '@/brand.generated'
 import { buildDocument, documentHeader, documentTable, escapeHtml } from './document'
 import { formatDate, formatMoney, localName, studentName, classLabel } from '@/lib/format'
 
@@ -178,7 +179,7 @@ export function receiptHtml(data: ReceiptData, ctx: Ctx): string {
 const ID_CARD_CSS = `
 .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; padding: 10mm; }
 .card {
-  border: 2px solid #1f5ceb; border-radius: 4mm; padding: 4mm;
+  border: 2px solid ${brand.palette[600]}; border-radius: 4mm; padding: 4mm;
   height: 54mm; display: flex; gap: 4mm; align-items: center; page-break-inside: avoid;
 }
 .card .photo {
@@ -187,7 +188,7 @@ const ID_CARD_CSS = `
 }
 .card .info { flex: 1; min-width: 0; font-size: 9pt; }
 .card .sname { font-size: 12pt; font-weight: 800; margin-bottom: 1mm; }
-.card .school { font-size: 8pt; font-weight: 700; color: #1f5ceb; text-transform: uppercase; letter-spacing: .4px; }
+.card .school { font-size: 8pt; font-weight: 700; color: ${brand.palette[600]}; text-transform: uppercase; letter-spacing: .4px; }
 .card .row { display: flex; gap: 2mm; margin-top: .6mm; }
 .card .row .k { color: #5a6474; }
 .barcode { margin-top: 2mm; display: flex; gap: 1px; height: 8mm; align-items: flex-end; }

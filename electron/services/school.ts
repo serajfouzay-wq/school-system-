@@ -15,22 +15,23 @@ export function saveSchool(patch: Partial<School>): School {
   const d = getDb()
   const existing = getSchool()
   const fields: (keyof School)[] = [
-    'name', 'name_ar', 'logo_path', 'address', 'phone', 'email',
+    'name', 'name_ar', 'logo_path', 'brand_color', 'address', 'phone', 'email',
     'academic_year_start', 'academic_year_end', 'currency', 'language',
     'grading_scale', 'calendar_type', 'numeral_system', 'setup_complete',
   ]
   if (!existing) {
     d.prepare(
-      `INSERT INTO schools (name, name_ar, logo_path, address, phone, email,
+      `INSERT INTO schools (name, name_ar, logo_path, brand_color, address, phone, email,
         academic_year_start, academic_year_end, currency, language,
         grading_scale, calendar_type, numeral_system, setup_complete)
-       VALUES (@name, @name_ar, @logo_path, @address, @phone, @email,
+       VALUES (@name, @name_ar, @logo_path, @brand_color, @address, @phone, @email,
         @academic_year_start, @academic_year_end, @currency, @language,
         @grading_scale, @calendar_type, @numeral_system, @setup_complete)`
     ).run({
       name: patch.name ?? 'My School',
       name_ar: patch.name_ar ?? null,
       logo_path: patch.logo_path ?? null,
+      brand_color: patch.brand_color ?? null,
       address: patch.address ?? null,
       phone: patch.phone ?? null,
       email: patch.email ?? null,

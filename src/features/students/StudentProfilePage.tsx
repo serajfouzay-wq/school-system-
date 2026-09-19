@@ -3,6 +3,7 @@ import { Pencil, Phone, MapPin, HeartPulse, StickyNote, IdCard, FileText, Plus, 
 import { useTranslation } from 'react-i18next'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { api } from '@/lib/api'
+import { brandColor } from '@/lib/brand'
 import { useAsync } from '@/lib/hooks'
 import { useApp, useLang, useNumerals, useCalendarType, useCurrency } from '@/store/app'
 import { Button } from '@/components/ui/Button'
@@ -177,7 +178,7 @@ export function StudentProfilePage({ id }: { id: number }) {
                     <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="var(--app-muted)" />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} stroke="var(--app-muted)" />
                     <Tooltip contentStyle={{ background: 'var(--app-surface)', border: '1px solid var(--app-border)', borderRadius: 12 }} />
-                    <Line type="monotone" dataKey="average" stroke="#1f5ceb" strokeWidth={3} />
+                    <Line type="monotone" dataKey="average" stroke={brandColor(600)} strokeWidth={3} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

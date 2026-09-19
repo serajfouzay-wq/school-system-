@@ -1,0 +1,8 @@
+{
+  "id": "default",
+  "appName": "School System",
+  "appNameAr": "نظام المدرسة",
+  "color": "#1f5ceb",
+  "logo": "build/icon.default.png",
+  "school": {}
+}

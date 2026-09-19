@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS schools (
   name                TEXT NOT NULL,
   name_ar             TEXT,
   logo_path           TEXT,
+  /* Overrides the colour this build was branded with, so changing it
+     never needs a new installer. NULL means "use the build's own". */
+  brand_color         TEXT,
   address             TEXT,
   phone               TEXT,
   email               TEXT,

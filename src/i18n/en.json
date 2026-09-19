@@ -188,7 +188,10 @@
     "gradingScale": "How do you give grades?",
     "gradePercentage": "Percentages (85%)",
     "gradeLetter": "Letters (A, B, C)",
-    "gradeGpa": "GPA (4.0)"
+    "gradeGpa": "GPA (4.0)",
+    "brandColor": "Main colour",
+    "brandColorHelp": "Used for buttons, the menu and printed documents. Leave it as it is unless the school has its own colour.",
+    "brandColorReset": "Back to the original colour"
   },
   "dashboard": {
     "title": "Home",

@@ -11,6 +11,7 @@ import { useApp, useLang } from '@/store/app'
 import type { Screen } from '@/store/app'
 import { api } from '@/lib/api'
 import { useDebounced } from '@/lib/hooks'
+import { appNameFor } from '@/lib/brand'
 import type { SearchHit } from '@shared/types'
 import { can } from '@shared/permissions'
 import type { Capability, Role } from '@shared/permissions'
@@ -73,9 +74,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
           <div className="min-w-0">
             <p className="truncate font-bold leading-tight">
-              {(lang === 'ar' && school?.name_ar) || school?.name || t('app.name')}
+              {(lang === 'ar' && school?.name_ar) || school?.name || appNameFor(lang)}
             </p>
-            <p className="truncate text-xs text-ink-500 dark:text-ink-300">{t('app.name')}</p>
+            {/* The program's name sits under the school's, unless a school
+                branded for itself gave them the same name. */}
+            {appNameFor(lang) !== ((lang === 'ar' && school?.name_ar) || school?.name) && (
+              <p className="truncate text-xs text-ink-500 dark:text-ink-300">{appNameFor(lang)}</p>
+            )}
           </div>
         </div>
 

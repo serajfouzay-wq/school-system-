@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { School, User } from '@shared/types'
 import { api } from '@/lib/api'
 import i18n, { applyLanguage } from '@/i18n'
+import { applyBrandColor } from '@/lib/brand'
 
 export type Screen =
   | { name: 'dashboard' }
@@ -80,11 +81,13 @@ export const useApp = create<AppState>((set, get) => ({
     await i18n.changeLanguage(lang)
     applyLanguage(lang)
     applyAppearance(preferences)
+    applyBrandColor(school?.brand_color)
     set({ school, preferences, ready: true })
   },
 
   reloadSchool: async () => {
     const school = await api.school.get()
+    applyBrandColor(school?.brand_color)
     set({ school })
   },
 

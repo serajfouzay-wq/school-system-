@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { GraduationCap, Image as ImageIcon, Plus, Trash2, Sparkles, Check } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
+import { brand } from '@/lib/brand'
 import { useApp, useLang } from '@/store/app'
 import { Button, ChoiceCard } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -47,17 +48,19 @@ export function SetupWizard({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false)
 
   const thisYear = new Date().getFullYear()
+  // Anything the brand file already knows is filled in, so a school that was
+  // set up for them only has to check it rather than type it again.
   const [form, setForm] = useState({
-    name: '',
-    name_ar: '',
-    address: '',
-    phone: '',
-    email: '',
+    name: brand.school.name ?? brand.appName,
+    name_ar: brand.school.name_ar ?? brand.appNameAr ?? '',
+    address: brand.school.address ?? '',
+    phone: brand.school.phone ?? '',
+    email: brand.school.email ?? '',
     logo_path: null as string | null,
     academic_year_start: `${thisYear}-09-01`,
     academic_year_end: `${thisYear + 1}-06-30`,
-    currency: 'LYD',
-    grading_scale: 'percentage' as 'percentage' | 'letter' | 'gpa',
+    currency: brand.school.currency ?? 'LYD',
+    grading_scale: (brand.school.grading_scale ?? 'percentage') as 'percentage' | 'letter' | 'gpa',
   })
   const [classes, setClasses] = useState<NamedItem[]>([])
   const [sectionsPerClass, setSectionsPerClass] = useState(1)

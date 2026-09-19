@@ -74,6 +74,9 @@ Everything is in **one SQLite file** in the user's app-data folder:
 | macOS | `~/Library/Application Support/school-management-system/school_data.db` |
 | Linux | `~/.config/school-management-system/school_data.db` |
 
+A build made for a particular school uses `school-system-<id>` instead, so two
+of them on one computer keep separate databases. See **One app, many schools**.
+
 Backing up the school means copying that one file — and Settings → Backup does
 it for you, including "save a copy to a USB stick".
 
@@ -107,6 +110,13 @@ electron/                  Main process — owns the database, nothing else can 
 
 shared/types.ts            Types used by both processes
 shared/permissions.ts      Roles, capabilities, and who may act on whom
+shared/palette.mjs         One colour -> eleven shades, in OKLCH
+
+brands/                    One file per school: name, colour, details
+scripts/
+  brand.mjs                Writes the generated palette and defaults
+  make-icon.mjs            Draws the icon (Electron, so no image library)
+  build-school.mjs         The whole thing: `npm run school`
 
 src/                       Renderer — React, no filesystem or database access
   i18n/                    en.json / ar.json (709 keys, generated in lockstep)
@@ -163,6 +173,89 @@ carry `.flip-rtl`.
 Arabic text is stored in dedicated `*_ar` columns alongside the Latin ones, so a
 student can be searched and sorted in either script, and printed documents pick
 the right one per language.
+
+---
+
+## One app, many schools
+
+Nothing in `src/` or `electron/` is edited to set up a new school. Everything
+that differs lives in one file under `brands/`:
+
+```jsonc
+{
+  "id": "alnoor",                       // folder and package name; keep it short
+  "appName": "Al Noor School System",   // window title, installer, shortcut
+  "appNameAr": "نظام مدرسة النور",
+  "color": "#0f766e",                   // the only colour you have to choose
+  "logo": "brands/alnoor-logo.png",     // optional; omit and a mark is drawn
+
+  "school": {                           // all optional — pre-fills the wizard
+    "name": "Al Noor International School",
+    "name_ar": "مدرسة النور الدولية",
+    "address": "Tripoli, Libya",
+    "phone": "+218 91 234 5678",
+    "currency": "LYD",
+    "country_code": "218",
+    "language": "ar"
+  }
+}
+```
+
+Then one command:
+
+```bash
+npm run school -- brands/alnoor.json --win     # Windows package
+npm run school -- brands/alnoor.json --linux
+npm run school -- brands/alnoor.json           # bundle only, no installer
+```
+
+A brand file can be as short as a name and a colour. `brands/example.json` is
+there to copy; `brands/default.json` is the plain unbranded build.
+
+### What the colour actually does
+
+You give one colour. The rest of the palette — eleven shades for buttons,
+hovers, tints, charts and printed documents — is derived from it in OKLCH, so
+the ramp is evenly spaced to the eye whatever hue you start from. HSL is not
+used, because the same numbers that suit a blue make a yellow look washed out.
+
+**The colour is adjusted if it would be unreadable.** White text on a mid-tone
+button is the assumption throughout the interface, and for a pale green or an
+amber that assumption fails. The main shade is therefore darkened until white
+text on it clears WCAG AA (4.5:1), with the pale and dark ends held in place and
+the rest re-spaced between them. `#f59e0b` becomes `#a56800` on the buttons; the
+tints stay amber. The generator refuses to finish if it cannot reach the target.
+
+### What gets generated
+
+`npm run school` writes these, and they are committed so a plain `npm run build`
+still works:
+
+| File | What it carries |
+|---|---|
+| `src/brand.generated.css` | The eleven shades as CSS variables |
+| `src/brand.generated.ts` | Palette, app name, school defaults, for the interface |
+| `electron/brand.generated.json` | The same, for the main process |
+| `build/icon.png` | The logo, or a mark drawn from the school's initials |
+
+Tailwind's `brand-*` classes read the CSS variables rather than baked-in hex, so
+one build can wear any colour. Charts and printed documents — which cannot see
+the stylesheet — are handed the palette directly.
+
+### Two schools on one computer
+
+Each branded build keeps its own database folder (`school-system-<id>`), so
+installing two of them side by side does not have one writing over the other.
+The unbranded build keeps the original folder name, so existing installations
+find the data they already have.
+
+### Changing a colour without rebuilding
+
+Settings → School information has a colour picker that repaints the interface as
+you choose. It is stored against the school, so it survives restarts and needs
+no new installer — the brand file only decides what the app looks like out of
+the box. A colour typed by hand that makes no sense is ignored rather than
+breaking the screen.
 
 ---
 
@@ -264,9 +357,9 @@ converted to international form using the country code in Settings.
 
 ## Notes for whoever picks this up next
 
-- **`build/icon.png` is a placeholder.** Replace it with real branding before
-  shipping. electron-builder generates the Windows `.ico` and macOS `.icns`
-  from it, so one 512x512 PNG is all you need to swap.
+- **`build/icon.png` is a placeholder** for the unbranded build. A school build
+  gets its own: point `logo` in the brand file at a PNG, or leave it out and a
+  mark is drawn from the school's initials on their colour.
 - **Auto-update is configured but not pointed anywhere.** `electron-builder.yml`
   has a `publish` block with a placeholder URL; set a real one and wire
   `electron-updater` in `main.ts` when you have somewhere to publish to.
