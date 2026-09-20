@@ -74,8 +74,17 @@ function reportFatal(stage: string, error: unknown): void {
 process.on('uncaughtException', (e) => reportFatal('running', e))
 process.on('unhandledRejection', (e) => reportFatal('running', e))
 
-/** The window icon, if it was packaged; undefined rather than a dead path. */
+/**
+ * The window icon — and only where one is actually wanted.
+ *
+ * Windows takes its icon from the executable and macOS from the bundle, so
+ * only Linux needs one handed to the window. The file lives inside `app.asar`,
+ * and whether the Windows side can read a path into an archive is not
+ * something this project can test, so it is not asked to: a platform that does
+ * not need the option does not get it.
+ */
 function windowIcon(): string | undefined {
+  if (process.platform !== 'linux') return undefined
   try {
     const file = path.join(process.env.APP_ROOT!, 'build', 'icon.png')
     return fs.existsSync(file) ? file : undefined
@@ -109,6 +118,8 @@ function createWindow(): void {
   // ready, the window never appears and the program looks like it did nothing
   // at all. So the wait has a limit, and a load failure is reported rather
   // than swallowed.
+  note('window object created')
+
   const reveal = () => {
     if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isVisible()) return
     mainWindow.show()
@@ -149,7 +160,9 @@ function createWindow(): void {
   if (VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    const page = path.join(RENDERER_DIST, 'index.html')
+    note(`loading ${page}`)
+    mainWindow.loadFile(page)
   }
 
   mainWindow.on('closed', () => { mainWindow = null })
@@ -221,6 +234,7 @@ if (!gotLock) {
     try {
       note(`starting - ${app.getVersion()} on ${process.platform} ${process.arch}`)
       buildMenu()
+      note('menu built')
       createWindow()
       note('window created')
     } catch (e) {
