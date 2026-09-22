@@ -21,6 +21,17 @@ const brand: Brand = {
   },
   "foreground": "#ffffff",
   "school": {},
+  "modules": {
+    "grades": true,
+    "exams": true,
+    "fees": true,
+    "timetable": true,
+    "library": true,
+    "transport": true,
+    "announcements": true,
+    "reports": true,
+    "whatsapp": true
+  },
   "notes": null
 }
 

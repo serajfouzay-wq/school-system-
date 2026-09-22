@@ -12,6 +12,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildPalette, foregroundFor, toRgbTriplet, contrast } from '../shared/palette.mjs'
+import { resolveModules, MODULE_NAMES } from '../shared/modules.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const GENERATED_NOTE = '/* Written by scripts/brand.mjs — do not edit by hand. */'
@@ -36,6 +37,9 @@ function loadBrand(file) {
 
   brand.id ||= String(brand.appName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
   brand.school ||= {}
+  // Dependencies are applied here, so what is written out is what the app will
+  // actually do rather than what the file asked for.
+  brand.modules = resolveModules(brand.modules)
   return { brand, full }
 }
 
@@ -67,6 +71,7 @@ function writeTs(brand, palette, fg) {
     palette,
     foreground: fg,
     school: brand.school,
+    modules: brand.modules,
     notes: brand.notes ?? null,
   }
   fs.writeFileSync(
@@ -79,7 +84,7 @@ function writeTs(brand, palette, fg) {
   fs.writeFileSync(
     path.join(ROOT, 'electron/brand.generated.json'),
     JSON.stringify(
-      { id: brand.id, appName: brand.appName, color: brand.color, school: brand.school },
+      { id: brand.id, appName: brand.appName, color: brand.color, school: brand.school, modules: brand.modules },
       null,
       2
     ) + '\n'
@@ -102,6 +107,8 @@ const ratio = contrast(palette[600], fg)
 console.log(`  brand:    ${brand.appName}`)
 console.log(`  colour:   ${brand.color}  ->  600 = ${palette[600]}`)
 console.log(`  text on it: ${fg} (${ratio.toFixed(2)}:1${ratio >= 4.5 ? ', readable' : ', TOO LOW'})`)
+const off = MODULE_NAMES.filter((m) => !brand.modules[m])
+console.log(`  modules:  ${off.length ? `all except ${off.join(', ')}` : 'all included'}`)
 console.log(`  school:   ${brand.school.name ?? '(not set — the wizard will ask)'}${brand.school.name_ar ? ` / ${brand.school.name_ar}` : ''}`)
 console.log(`  wrote:    src/brand.generated.css, src/brand.generated.ts,`)
 console.log(`            electron/brand.generated.json`)

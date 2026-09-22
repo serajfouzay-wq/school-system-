@@ -1,4 +1,6 @@
 import type { GradingScale } from '../shared/types'
+import type { ModuleSet } from '../shared/modules.mjs'
+import { resolveModules } from '../shared/modules.mjs'
 import generated from './brand.generated.json'
 
 /**
@@ -28,11 +30,16 @@ export interface MainBrand {
   appName: string
   color: string
   school: SchoolDefaults
+  /** Which optional parts this build includes. */
+  modules: ModuleSet
 }
 
 const brand: MainBrand = {
   ...(generated as MainBrand),
   school: ((generated as MainBrand).school ?? {}) as SchoolDefaults,
+  // Resolved again here so an edited or older brand file can never leave the
+  // main process with a half-defined set.
+  modules: resolveModules((generated as MainBrand).modules),
 }
 
 export default brand

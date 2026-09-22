@@ -112,11 +112,19 @@ shared/types.ts            Types used by both processes
 shared/permissions.ts      Roles, capabilities, and who may act on whom
 shared/palette.mjs         One colour -> eleven shades, in OKLCH
 
+shared/modules.mjs         Which optional parts exist, and what each one owns
+
 brands/                    One file per school: name, colour, details
+clients/                   Their spreadsheets, kept out of version control
 scripts/
   brand.mjs                Writes the generated palette and defaults
   make-icon.mjs            Draws the icon (Electron, so no image library)
+  icon-fallback.mjs        Draws one without a screen, via png.mjs
+  csv.mjs                  Reads the office's spreadsheets, forgivingly
+  make-data.mjs            Turns those into the database the build ships
   build-school.mjs         The whole thing: `npm run school`
+  builder/                 The page behind `npm run builder`
+electron/seed-cli.ts       Builds a school's database headlessly, at build time
 
 src/                       Renderer — React, no filesystem or database access
   i18n/                    en.json / ar.json (709 keys, generated in lockstep)
@@ -215,6 +223,79 @@ npm run school -- brands/alnoor.json           # bundle only, no installer
 A brand file can be as short as a name and a colour. `brands/example.json` is
 there to copy; `brands/default.json` is the plain unbranded build.
 
+### Or without touching a file at all
+
+```bash
+npm run builder
+```
+
+opens a page in the browser: name, colour, logo, which parts the school gets,
+and their spreadsheets. Press **Create** and it writes the brand file, runs the
+whole build, and shows the output as it happens. It can also load a school you
+made before, to change something and build again.
+
+Everything below is what that page is driving, and what to edit by hand if you
+would rather.
+
+### What the school gets
+
+Each optional part can be left out of a build:
+
+```jsonc
+"modules": {
+  "transport": false,     // this school has no buses
+  "library": false
+}
+```
+
+The choices are `grades`, `exams`, `fees`, `timetable`, `library`, `transport`,
+`announcements`, `reports` and `whatsapp`. Anything not mentioned is included.
+Students, staff, attendance, classes, settings, the recycle bin and help are
+the system itself and are always present.
+
+A module that is off is **not merely hidden**. Its screens leave the menu, and
+the main process refuses every action behind it — a build without Transport
+answers `transport.*` with "This part of the system is not included", so
+nothing can reach data the school did not buy. Dependencies are applied for
+you: exams write their marks into Grades, so asking for exams without grades
+turns exams off rather than shipping a screen with nowhere to put a result.
+
+### Their data, in before you send it
+
+A build can carry the school's own records, so the client installs the program
+and their school is simply there — no wizard, no import, nobody retyping.
+
+```jsonc
+"data": {
+  "classes":  "clients/alnoor/classes.csv",
+  "subjects": "clients/alnoor/subjects.csv",
+  "students": "clients/alnoor/students.csv",
+  "staff":    "clients/alnoor/staff.csv",
+  "terms":    [{ "name": "First Term", "name_ar": "الفصل الأول" }],
+  "owner":    { "name": "Mr Seraj", "username": "owner", "pin": "4321" }
+}
+```
+
+The CSV files are whatever the office already has. Column names are matched
+loosely and in either language — `Full Name`, `student_name`, `الاسم` all land
+in the same place — and quoted commas, embedded newlines, semicolon separators,
+a byte-order mark and Windows line endings are all handled. A class a student
+mentions that the classes file never listed is created rather than leaving that
+student unplaced.
+
+`scripts/make-data.mjs` reads those files and hands a plan to a headless copy
+of the app itself (`electron/seed-cli.ts`), so student codes, PIN hashing and
+every other rule hold exactly as if a person had typed it all in. The result is
+a `school_data.db` that ships inside the package and is moved into place the
+first time the program runs — and only then: an installation that already has
+data is never overwritten, however many times it is reinstalled.
+
+Leave the `data` block out and the client gets the setup wizard instead.
+
+**These files are real people.** `clients/` and `brands/` are in `.gitignore`
+apart from the examples, so a school's names and phone numbers stay on the
+machine that made the build.
+
 ### What the colour actually does
 
 You give one colour. The rest of the palette — eleven shades for buttons,
@@ -240,6 +321,7 @@ still works:
 | `src/brand.generated.ts` | Palette, app name, school defaults, for the interface |
 | `electron/brand.generated.json` | The same, for the main process |
 | `build/icon.png` | The logo, or a mark drawn from the school's initials |
+| `preseed/school_data.db` | The school's own data, when the brand file supplies any |
 
 Tailwind's `brand-*` classes read the CSS variables rather than baked-in hex, so
 one build can wear any colour. Charts and printed documents — which cannot see

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, X, Clock, FileCheck, Save, CalendarCheck, Users, Printer, MessageCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
+import { hasModule } from '@/lib/brand'
 import { useAsync, useUnsavedGuard } from '@/lib/hooks'
 import { useApp, useLang, useNumerals, useCalendarType } from '@/store/app'
 import type { AttendanceStatus, StaffAttendanceStatus, Recipient } from '@shared/types'
@@ -193,17 +194,19 @@ function StudentAttendance() {
                 <div className="flex flex-wrap gap-2">
                   {/* Only offer this once the register is saved, or the list
                       would be built from marks that are not recorded yet. */}
-                  <Button
-                    variant="success"
-                    disabled={dirty}
-                    icon={<MessageCircle size={18} />}
-                    onClick={async () => {
-                      setWaRecipients(await api.whatsapp.absentToday(date, Number(sectionId)))
-                      setWaOpen(true)
-                    }}
-                  >
-                    {t('whatsapp.purposeAbsence')}
-                  </Button>
+                  {hasModule('whatsapp') && (
+                    <Button
+                      variant="success"
+                      disabled={dirty}
+                      icon={<MessageCircle size={18} />}
+                      onClick={async () => {
+                        setWaRecipients(await api.whatsapp.absentToday(date, Number(sectionId)))
+                        setWaOpen(true)
+                      }}
+                    >
+                      {t('whatsapp.purposeAbsence')}
+                    </Button>
+                  )}
                   <Button onClick={() => void printSheet()} icon={<Printer size={18} />}>{t('attendance.printSheet')}</Button>
                   <Button size="lg" variant="primary" loading={saving} disabled={!dirty} onClick={() => void save()} icon={<Save size={20} />}>
                     {t('attendance.saveAttendance')}

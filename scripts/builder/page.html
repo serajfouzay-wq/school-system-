@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>School System Workshop</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --surface: #fff; --border: #d9dde5; --text: #23272f; --muted: #57647b;
+    --accent: #1f5ceb; --accent-fg: #fff; --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14171d; --surface:#1d2129; --border:#333a46; --text:#eef0f4; --muted:#b8c0ce; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.55;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  header { padding: 22px 24px 8px; }
+  h1 { margin: 0; font-size: 26px; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  .wrap { display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 20px; padding: 16px 24px 40px; align-items: start; }
+  @media (max-width: 950px) { .wrap { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 4px; font-size: 17px; }
+  .card .hint { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+  label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px; }
+  input[type=text], input[type=password], select, textarea {
+    width: 100%; padding: 10px 12px; font: inherit; font-size: 15px; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .row.one { grid-template-columns: 1fr; }
+  .rtl { direction: rtl; }
+  .colour { display: flex; align-items: center; gap: 12px; }
+  input[type=color] { width: 62px; height: 44px; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: none; cursor: pointer; }
+  .swatches { display: flex; gap: 3px; margin-top: 10px; }
+  .swatches span { flex: 1; height: 26px; border-radius: 4px; }
+  .warn { color: #b45309; font-size: 14px; margin-top: 8px; }
+  .modules { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .mod { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: 15px; }
+  .mod input { width: 17px; height: 17px; accent-color: var(--accent); }
+  .mod.off { opacity: .55; }
+  .file { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; flex-wrap: wrap; }
+  .file b { font-size: 14px; min-width: 88px; }
+  .file .name { font-size: 13px; color: var(--muted); }
+  input[type=file] { font-size: 13px; max-width: 230px; }
+  button {
+    font: inherit; font-weight: 700; padding: 12px 20px; border-radius: 11px; border: 1px solid transparent;
+    background: var(--accent); color: var(--accent-fg); cursor: pointer;
+  }
+  button.ghost { background: none; color: var(--text); border-color: var(--border); font-weight: 600; }
+  button[disabled] { opacity: .55; cursor: default; }
+  .preview .app { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .preview .top { display: flex; align-items: center; gap: 10px; padding: 11px 13px; background: var(--accent); color: var(--accent-fg); }
+  .preview .mark { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; font-weight: 800; font-size: 14px; background: rgba(255,255,255,.22); overflow: hidden; }
+  .preview .mark img { width: 100%; height: 100%; object-fit: cover; }
+  .preview .menu { padding: 8px; font-size: 14px; }
+  .preview .menu div { padding: 6px 9px; border-radius: 7px; }
+  .preview .menu div.on { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+  pre#log {
+    background: #11151c; color: #d7e0ea; padding: 14px; border-radius: 11px; font-size: 13px;
+    max-height: 340px; overflow: auto; white-space: pre-wrap; margin: 0; display: none;
+  }
+  .done { border-color: #059669; }
+  .done h2 { color: #059669; }
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .status { font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>School System Workshop</h1>
+  <p>Make one school's copy of the system. Nothing here changes the program itself.</p>
+</header>
+
+<div class="wrap">
+  <div>
+    <div class="card">
+      <h2>The school</h2>
+      <p class="hint">The name goes on the window, the installer and the shortcut.</p>
+      <div class="row">
+        <div><label for="appName">Program name *</label><input id="appName" type="text" placeholder="Al Fajr School System"></div>
+        <div><label for="appNameAr">Program name in Arabic</label><input id="appNameAr" type="text" class="rtl" placeholder="نظام مدرسة الفجر"></div>
+      </div>
+      <div class="row">
+        <div><label for="schoolName">School name</label><input id="schoolName" type="text" placeholder="Al Fajr School"></div>
+        <div><label for="schoolNameAr">School name in Arabic</label><input id="schoolNameAr" type="text" class="rtl" placeholder="مدرسة الفجر"></div>
+      </div>
+      <div class="row">
+        <div><label for="phone">Phone</label><input id="phone" type="text" placeholder="+218 91 234 5678"></div>
+        <div><label for="email">Email</label><input id="email" type="text" placeholder="office@school.ly"></div>
+      </div>
+      <div class="row">
+        <div><label for="address">Address</label><input id="address" type="text" placeholder="Tripoli, Libya"></div>
+        <div><label for="currency">Currency</label><input id="currency" type="text" value="LYD"></div>
+      </div>
+      <div class="row">
+        <div><label for="language">Language it opens in</label>
+          <select id="language"><option value="ar">العربية</option><option value="en">English</option></select></div>
+        <div><label for="country">Phone country code</label><input id="country" type="text" value="218"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Look</h2>
+      <p class="hint">One colour. Everything else — buttons, menus, charts, printed pages — comes from it.</p>
+      <div class="colour">
+        <input id="color" type="color" value="#1f5ceb" aria-label="Main colour">
+        <input id="colorText" type="text" value="#1f5ceb" style="max-width:140px;font-family:ui-monospace,monospace">
+        <div class="file" style="margin:0">
+          <b>Logo</b><input id="logo" type="file" accept="image/*"><span class="name" id="logoName">optional</span>
+        </div>
+      </div>
+      <div class="swatches" id="swatches"></div>
+      <div class="warn" id="colorWarn" hidden></div>
+    </div>
+
+    <div class="card">
+      <h2>What this school gets</h2>
+      <p class="hint">Anything switched off is not in the menu and is refused by the program, not merely hidden. Students, staff, attendance, classes and settings are always included.</p>
+      <div class="modules" id="modules"></div>
+    </div>
+
+    <div class="card">
+      <h2>Their data, ready before you send it</h2>
+      <p class="hint">Attach the school's spreadsheets and the program arrives with everything already entered. Leave them empty and the client gets the setup wizard instead. CSV files; column names are matched loosely, in English or Arabic.</p>
+      <div class="file"><b>Classes</b><input type="file" accept=".csv,text/csv" data-kind="classes"><span class="name"></span></div>
+      <div class="file"><b>Subjects</b><input type="file" accept=".csv,text/csv" data-kind="subjects"><span class="name"></span></div>
+      <div class="file"><b>Students</b><input type="file" accept=".csv,text/csv" data-kind="students"><span class="name"></span></div>
+      <div class="file"><b>Staff</b><input type="file" accept=".csv,text/csv" data-kind="staff"><span class="name"></span></div>
+      <div class="row" style="margin-top:14px">
+        <div><label for="ownerName">Who signs in first</label><input id="ownerName" type="text" placeholder="School Owner"></div>
+        <div><label for="ownerPin">Their PIN</label><input id="ownerPin" type="text" inputmode="numeric" placeholder="0000" maxlength="8"></div>
+      </div>
+      <div class="row one">
+        <div><label for="notes">A note for their staff (appears on the Help screen)</label>
+          <textarea id="notes" rows="2" placeholder="If the program will not start, call ..."></textarea></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Make it</h2>
+      <div class="bar">
+        <label for="target" style="margin:0">Package</label>
+        <select id="target" style="max-width:220px">
+          <option value="win">Windows</option>
+          <option value="linux">Linux</option>
+          <option value="dir">This machine only (quick test)</option>
+          <option value="none">Just prepare, do not package</option>
+        </select>
+        <button id="go">Create</button>
+        <span class="status" id="status"></span>
+      </div>
+      <pre id="log"></pre>
+    </div>
+  </div>
+
+  <div class="preview">
+    <div class="card">
+      <h2>Preview</h2>
+      <p class="hint">How their copy will look.</p>
+      <div class="app">
+        <div class="top"><span class="mark" id="mark">SS</span><span id="previewName">School System</span></div>
+        <div class="menu" id="menu"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Start from an earlier one</h2>
+      <p class="hint">Loads a school you made before, to change and build again.</p>
+      <select id="existing"><option value="">—</option></select>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { buildPalette, foregroundFor } from '/palette.mjs'
+
+const $ = (id) => document.getElementById(id)
+const ALWAYS = ['Home', 'Students', 'Teachers & Staff', 'Attendance', 'Classes & Subjects']
+const MODULE_LABEL = {
+  grades: 'Grades', exams: 'Online Exams', fees: 'Fees', timetable: 'Timetable',
+  library: 'Library', transport: 'Transport', announcements: 'Announcements',
+  reports: 'Reports', whatsapp: 'WhatsApp to parents',
+}
+const NEEDS = { exams: ['grades'] }
+let logoDataUrl = null, logoFileName = null
+const csv = {}
+
+// --- modules -------------------------------------------------------------
+const mods = await (await fetch('/api/modules')).json()
+$('modules').innerHTML = mods.modules.map((m) => `
+  <label class="mod" data-m="${m}"><input type="checkbox" checked data-module="${m}"><span>${MODULE_LABEL[m] ?? m}</span></label>`).join('')
+
+function moduleState() {
+  const out = {}
+  document.querySelectorAll('[data-module]').forEach((c) => { out[c.dataset.module] = c.checked })
+  // A module whose dependency is off cannot be on; show that rather than
+  // silently correcting it later.
+  for (const [name, needs] of Object.entries(NEEDS)) {
+    if (out[name] && needs.some((n) => !out[n])) out[name] = false
+  }
+  document.querySelectorAll('[data-module]').forEach((c) => {
+    const forced = out[c.dataset.module] === false && c.checked
+    c.closest('.mod').classList.toggle('off', !out[c.dataset.module])
+    c.closest('.mod').title = forced ? 'Turned off because Grades is off' : ''
+  })
+  return out
+}
+
+// --- colour --------------------------------------------------------------
+function applyColour(hex) {
+  let palette
+  try { palette = buildPalette(hex) } catch { return }
+  const fg = foregroundFor(palette[600])
+  document.documentElement.style.setProperty('--accent', palette[600])
+  document.documentElement.style.setProperty('--accent-fg', fg)
+  $('swatches').innerHTML = Object.entries(palette)
+    .map(([k, v]) => `<span style="background:${v}" title="${k} ${v}"></span>`).join('')
+  // The palette is darkened as far as it needs to be for white text to stay
+  // readable, so the buttons may not be the exact shade that was picked. Say
+  // so rather than letting it look like a mistake.
+  const shifted = palette[600].toLowerCase() !== hex.toLowerCase()
+  $('colorWarn').hidden = !shifted
+  $('colorWarn').textContent = shifted
+    ? `Buttons will use ${palette[600]}, a little darker than ${hex}, so white text on them stays readable.`
+    : ''
+  $('go').disabled = false
+}
+
+function syncColour(from) {
+  const v = from.value.trim()
+  if (!/^#[0-9a-fA-F]{6}$/.test(v)) return
+  $('color').value = v; $('colorText').value = v
+  applyColour(v)
+}
+$('color').addEventListener('input', () => syncColour($('color')))
+$('colorText').addEventListener('input', () => syncColour($('colorText')))
+
+// --- preview -------------------------------------------------------------
+function initials(name) {
+  const words = String(name || '').trim().split(/\s+/)
+    .filter((w) => !/^(al|the|school|schools|system)$/i.test(w))
+  const pick = (words.length ? words : String(name || 'S').trim().split(/\s+/)).slice(0, 2)
+  return pick.map((w) => [...w][0] ?? '').join('').toUpperCase() || 'S'
+}
+function refresh() {
+  const name = $('appName').value || 'School System'
+  $('previewName').textContent = name
+  $('mark').innerHTML = logoDataUrl ? `<img src="${logoDataUrl}" alt="">` : initials($('schoolName').value || name)
+  const on = moduleState()
+  const items = [...ALWAYS]
+  for (const m of mods.modules) if (on[m] && MODULE_LABEL[m] && m !== 'whatsapp') items.push(MODULE_LABEL[m])
+  items.push('Settings', 'Help')
+  $('menu').innerHTML = items.map((x, i) => `<div class="${i === 0 ? 'on' : ''}">${x}</div>`).join('')
+}
+document.addEventListener('input', refresh)
+document.addEventListener('change', refresh)
+
+// --- files ---------------------------------------------------------------
+const toDataUrl = (file) => new Promise((ok, no) => {
+  const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(file)
+})
+$('logo').addEventListener('change', async (e) => {
+  const f = e.target.files[0]
+  if (!f) { logoDataUrl = null; $('logoName').textContent = 'optional'; return refresh() }
+  logoDataUrl = await toDataUrl(f); logoFileName = f.name
+  $('logoName').textContent = f.name
+  refresh()
+})
+document.querySelectorAll('[data-kind]').forEach((input) => {
+  input.addEventListener('change', async (e) => {
+    const f = e.target.files[0]
+    const label = input.parentElement.querySelector('.name')
+    if (!f) { delete csv[input.dataset.kind]; label.textContent = ''; return }
+    csv[input.dataset.kind] = await toDataUrl(f)
+    const rows = Math.max(0, (atob(csv[input.dataset.kind].split(',').pop()).split('\n').filter((l) => l.trim()).length) - 1)
+    label.textContent = `${f.name} · about ${rows} rows`
+  })
+})
+
+// --- earlier schools -----------------------------------------------------
+const { brands } = await (await fetch('/api/brands')).json()
+$('existing').innerHTML = '<option value="">—</option>' +
+  brands.map((b) => `<option value="${b.file}">${b.appName}</option>`).join('')
+$('existing').addEventListener('change', async (e) => {
+  if (!e.target.value) return
+  const b = await (await fetch('/api/brand?file=' + encodeURIComponent(e.target.value))).json()
+  $('appName').value = b.appName ?? ''; $('appNameAr').value = b.appNameAr ?? ''
+  $('schoolName').value = b.school?.name ?? ''; $('schoolNameAr').value = b.school?.name_ar ?? ''
+  $('phone').value = b.school?.phone ?? ''; $('email').value = b.school?.email ?? ''
+  $('address').value = b.school?.address ?? ''; $('currency').value = b.school?.currency ?? 'LYD'
+  $('country').value = b.school?.country_code ?? '218'; $('language').value = b.school?.language ?? 'ar'
+  $('notes').value = b.notes ?? ''
+  $('colorText').value = b.color ?? '#1f5ceb'; syncColour($('colorText'))
+  document.querySelectorAll('[data-module]').forEach((c) => {
+    c.checked = b.modules ? b.modules[c.dataset.module] !== false : true
+  })
+  refresh()
+})
+
+// --- build ---------------------------------------------------------------
+$('go').addEventListener('click', async () => {
+  if (!$('appName').value.trim()) { $('appName').focus(); return }
+  const body = {
+    appName: $('appName').value.trim(),
+    appNameAr: $('appNameAr').value.trim(),
+    color: $('colorText').value.trim(),
+    logo: logoDataUrl, logoName: logoFileName,
+    modules: moduleState(),
+    notes: $('notes').value.trim(),
+    target: $('target').value,
+    school: {
+      name: $('schoolName').value.trim() || undefined,
+      name_ar: $('schoolNameAr').value.trim() || undefined,
+      phone: $('phone').value.trim() || undefined,
+      email: $('email').value.trim() || undefined,
+      address: $('address').value.trim() || undefined,
+      currency: $('currency').value.trim() || undefined,
+      country_code: $('country').value.trim() || undefined,
+      language: $('language').value,
+    },
+    files: csv,
+    owner: ($('ownerName').value.trim() || $('ownerPin').value.trim())
+      ? { name: $('ownerName').value.trim() || 'School Owner', username: 'owner', pin: $('ownerPin').value.trim() || '0000' }
+      : undefined,
+  }
+
+  const log = $('log')
+  log.style.display = 'block'; log.textContent = ''
+  $('go').disabled = true; $('status').textContent = 'Working… this takes a few minutes.'
+
+  try {
+    const res = await fetch('/api/build', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error((await res.json()).error ?? 'The build could not be started')
+    const reader = res.body.getReader()
+    const dec = new TextDecoder()
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      log.textContent += dec.decode(value, { stream: true })
+      log.scrollTop = log.scrollHeight
+    }
+    if (log.textContent.includes('__DONE__')) {
+      const where = log.textContent.split('__DONE__')[1].trim().split('\n')[0]
+      $('status').innerHTML = `<b style="color:#059669">Ready.</b> Look in <code>${where}</code>`
+    } else {
+      $('status').innerHTML = '<b style="color:#b91c1c">It did not finish.</b> The reason is at the end of the log.'
+    }
+  } catch (e) {
+    $('status').textContent = e.message
+  } finally {
+    $('go').disabled = false
+  }
+})
+
+applyColour('#1f5ceb')
+refresh()
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@ import { Wallet, Plus, Printer, Receipt, TrendingUp, Trash2, Pencil, Bell, Folde
 import { useTranslation } from 'react-i18next'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { api } from '@/lib/api'
+import { hasModule } from '@/lib/brand'
 import { useAsync, useDebounced } from '@/lib/hooks'
 import { useApp, useLang, useNumerals, useCalendarType, useCurrency } from '@/store/app'
 import type { FeePayment, FeeStructure, StudentFeeSummary } from '@shared/types'
@@ -211,17 +212,19 @@ function Balances() {
         <div className="min-w-[16rem]">
           <Toggle checked={onlyOwing} onChange={setOnlyOwing} label={t('fees.onlyOutstanding')} />
         </div>
-        <Button
-          variant="success"
-          icon={<MessageCircle size={18} />}
-          onClick={async () => {
-            // Everyone who still owes, in one queue.
-            setWaRecipients(await api.whatsapp.feeDebtors(classId ? Number(classId) : null))
-            setWaOpen(true)
-          }}
-        >
-          {t('whatsapp.sendAll')}
-        </Button>
+        {hasModule('whatsapp') && (
+          <Button
+            variant="success"
+            icon={<MessageCircle size={18} />}
+            onClick={async () => {
+              // Everyone who still owes, in one queue.
+              setWaRecipients(await api.whatsapp.feeDebtors(classId ? Number(classId) : null))
+              setWaOpen(true)
+            }}
+          >
+            {t('whatsapp.sendAll')}
+          </Button>
+        )}
         <Button
           onClick={() =>
             void exportCsv(
@@ -285,26 +288,28 @@ function Balances() {
                       <span className="flex justify-end gap-2">
                         {row.balance > 0 && (
                           <>
-                            <Button
-                              size="sm"
-                              variant="success"
-                              icon={<MessageCircle size={16} />}
-                              onClick={() => {
-                                setWaRecipients([{
-                                  student_id: row.student.id,
-                                  student_name: row.student.full_name,
-                                  student_name_ar: row.student.full_name_ar,
-                                  student_code: row.student.student_code,
-                                  guardian_name: row.student.guardian_name ?? null,
-                                  phone: row.student.guardian_phone ?? null,
-                                  class_label: classLabel(row.student, lang),
-                                  amount: Math.round(row.balance),
-                                }])
-                                setWaOpen(true)
-                              }}
-                            >
-                              {t('whatsapp.send')}
-                            </Button>
+                            {hasModule('whatsapp') && (
+                              <Button
+                                size="sm"
+                                variant="success"
+                                icon={<MessageCircle size={16} />}
+                                onClick={() => {
+                                  setWaRecipients([{
+                                    student_id: row.student.id,
+                                    student_name: row.student.full_name,
+                                    student_name_ar: row.student.full_name_ar,
+                                    student_code: row.student.student_code,
+                                    guardian_name: row.student.guardian_name ?? null,
+                                    phone: row.student.guardian_phone ?? null,
+                                    class_label: classLabel(row.student, lang),
+                                    amount: Math.round(row.balance),
+                                  }])
+                                  setWaOpen(true)
+                                }}
+                              >
+                                {t('whatsapp.send')}
+                              </Button>
+                            )}
                             <Button size="sm" onClick={() => void printReminder(row)} icon={<Bell size={16} />}>{t('fees.sendReminder')}</Button>
                           </>
                         )}

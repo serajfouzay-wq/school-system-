@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
+import { hasModule } from '@/lib/brand'
 import { useAsync } from '@/lib/hooks'
 import { useApp, useLang, useNumerals, useCurrency, useCalendarType } from '@/store/app'
 import type { Route, Rider, Role, Recipient } from '@shared/types'
@@ -692,7 +693,7 @@ function MoneyTab() {
       <Card padded={false}>
         <div className="flex flex-wrap items-center justify-between gap-3 p-5 pb-3">
           <h2 className="text-lg font-bold">{t('transport.unpaidRiders')}</h2>
-          {!!unpaid?.length && (
+          {!!unpaid?.length && hasModule('whatsapp') && (
             <Button
               variant="success"
               icon={<MessageCircle size={18} />}

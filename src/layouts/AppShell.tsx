@@ -11,7 +11,7 @@ import { useApp, useLang } from '@/store/app'
 import type { Screen } from '@/store/app'
 import { api } from '@/lib/api'
 import { useDebounced } from '@/lib/hooks'
-import { appNameFor } from '@/lib/brand'
+import { appNameFor, screenIsHidden } from '@/lib/brand'
 import type { SearchHit } from '@shared/types'
 import { can } from '@shared/permissions'
 import type { Capability, Role } from '@shared/permissions'
@@ -191,8 +191,12 @@ function NavList({ role, screen, go }: { role: Role | null; screen: Screen['name
   )
 }
 
-/** Hide what this person cannot use; the main process refuses it regardless. */
+/**
+ * Hide what this person cannot use and what this build does not include. Both
+ * are a courtesy: the main process refuses either way.
+ */
 function allowed(role: Role | null, item: NavItem): boolean {
+  if (screenIsHidden(item.screen)) return false
   return !item.needs || can(role, item.needs)
 }
 

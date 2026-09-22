@@ -2,5 +2,16 @@
   "id": "default",
   "appName": "School System",
   "color": "#1f5ceb",
-  "school": {}
+  "school": {},
+  "modules": {
+    "grades": true,
+    "exams": true,
+    "fees": true,
+    "timetable": true,
+    "library": true,
+    "transport": true,
+    "announcements": true,
+    "reports": true,
+    "whatsapp": true
+  }
 }

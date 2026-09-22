@@ -2,6 +2,8 @@
  * What one school's branding looks like. The values themselves live in
  * `brand.generated.ts`, written by `scripts/brand.mjs` from a file in brands/.
  */
+import type { ModuleSet } from '@shared/modules.mjs'
+
 export interface Brand {
   id: string
   /** What the program calls itself: window title, installer, shortcut. */
@@ -27,6 +29,8 @@ export interface Brand {
     numeral_system?: string
     grading_scale?: string
   }
+  /** Which optional parts of the system this build includes. */
+  modules: ModuleSet
   /** Anything extra the school wanted staff to see on the Help screen. */
   notes: string | null
 }

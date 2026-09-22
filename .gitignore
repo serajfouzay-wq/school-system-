@@ -2,6 +2,18 @@ node_modules/
 dist/
 dist-electron/
 release/
+# A client's prepared database, built per package and never committed.
+preseed/
+
+# Real schools' spreadsheets: student names, guardians, phone numbers. These
+# stay on the machine that made the build and never go into version control.
+clients/*
+!clients/example/
+
+# Brand files for real clients, which carry their details. The examples stay.
+brands/*
+!brands/default.json
+!brands/example.json
 *.log
 .DS_Store
 .env

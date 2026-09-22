@@ -19,5 +19,21 @@
     "grading_scale": "percentage"
   },
 
+  "modules": {
+    "transport": false
+  },
+
+  "data": {
+    "classes": "clients/example/classes.csv",
+    "subjects": "clients/example/subjects.csv",
+    "students": "clients/example/students.csv",
+    "staff": "clients/example/staff.csv",
+    "terms": [
+      { "name": "First Term", "name_ar": "الفصل الأول" },
+      { "name": "Second Term", "name_ar": "الفصل الثاني" }
+    ],
+    "owner": { "name": "School Owner", "username": "owner", "pin": "0000" }
+  },
+
   "notes": "Anything you want the staff to see on the Help screen. Optional."
 }

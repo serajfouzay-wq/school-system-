@@ -29,10 +29,37 @@ export function backupsDir(): string {
   return dir
 }
 
+/**
+ * A build made for one school can carry that school's data inside it: their
+ * classes, their students, their staff, already entered. The first time the
+ * program runs on their computer that database is moved into place, so the
+ * office opens it and their school is simply there.
+ *
+ * It only ever happens when there is no database yet. An installation with
+ * data of its own is never overwritten, however many times it is reinstalled.
+ */
+function installShippedData(file: string): void {
+  if (fs.existsSync(file)) return
+  const shipped = path.join(process.resourcesPath ?? '', 'preseed', 'school_data.db')
+  try {
+    if (!fs.existsSync(shipped)) return
+    fs.copyFileSync(shipped, file)
+    // Photos and documents that were prepared alongside it.
+    const files = path.join(path.dirname(shipped), 'files')
+    if (fs.existsSync(files)) fs.cpSync(files, filesDir(), { recursive: true })
+    console.log('[db] installed the data this build was prepared with')
+  } catch (e) {
+    // A school that cannot be pre-filled still gets a working program, so this
+    // is reported and stepped over rather than allowed to stop the start-up.
+    console.error('[db] could not install the prepared data:', (e as Error).message)
+  }
+}
+
 export function getDb(): Database.Database {
   if (db) return db
   const file = dbPath()
   fs.mkdirSync(path.dirname(file), { recursive: true })
+  installShippedData(file)
   db = new Database(file)
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')

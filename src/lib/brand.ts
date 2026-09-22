@@ -1,5 +1,7 @@
 import generated from '@/brand.generated'
 import { buildPalette, foregroundFor, toRgbTriplet } from '@shared/palette.mjs'
+import { hiddenScreens, resolveModules } from '@shared/modules.mjs'
+import type { ModuleName } from '@shared/modules.mjs'
 
 /**
  * The school's colours, for the places Tailwind classes cannot reach: chart
@@ -19,6 +21,21 @@ export function brandColor(step: 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 
     if (value) return `rgb(${value})`
   }
   return generated.palette[String(step)] ?? generated.color
+}
+
+/** What this build includes, with dependencies already applied. */
+export const modules = resolveModules(generated.modules)
+
+const HIDDEN = hiddenScreens(modules)
+
+/** Whether a screen belongs to a module this build left out. */
+export function screenIsHidden(screen: string): boolean {
+  return HIDDEN.has(screen)
+}
+
+/** Whether an optional module is part of this build. */
+export function hasModule(name: ModuleName): boolean {
+  return modules[name]
 }
 
 /** The app's own name, as the school had it branded. */

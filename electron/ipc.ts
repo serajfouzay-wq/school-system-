@@ -23,6 +23,8 @@ import { parseCsv, writeCsv } from './services/exporter'
 import { seedDemoData, isSeeded } from './db/seed'
 import { getDb } from './db/index'
 import { can } from '../shared/permissions'
+import { actionIsOff } from '../shared/modules.mjs'
+import brand from './brand'
 import type { Capability } from '../shared/permissions'
 
 /** The signed-in user, tracked in the main process so services can stamp
@@ -581,6 +583,12 @@ export function registerIpc(): void {
   ipcMain.handle('api:call', async (_event, method: string, payload: unknown) => {
     const handler = handlers[method]
     if (!handler) return { ok: false, error: `Unknown action: ${method}` }
+
+    // A module this build left out is not merely hidden: the action behind it
+    // is refused, so nothing reaches data the school did not buy.
+    if (actionIsOff(method, brand.modules)) {
+      return { ok: false, error: 'This part of the system is not included.' }
+    }
 
     const needed = REQUIRED[method]
     // Before the first account exists the school is unclaimed and the setup
