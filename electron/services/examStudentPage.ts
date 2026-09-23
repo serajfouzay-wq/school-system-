@@ -65,7 +65,7 @@ export function studentPage(): string {
       score:'Your score', pending:'Your teacher will check some answers and give you your mark.',
       timeLeft:'Time left', timeUp:'Time is up. Your exam was handed in automatically.',
       answerHere:'Write your answer here', unanswered:'Not answered yet',
-      saving:'Saving…', savedOk:'Saved', true_:'True', false_:'False',
+      saving:'Saving…', savedOk:'Saved', notSaved:'Not saved — check the Wi-Fi', true_:'True', false_:'False',
       loading:'Please wait…', retry:'Try again', close:'You may close this page.',
       noName:'Please find your name in the list.', questionsLeft:'question(s) with no answer yet'
     },
@@ -78,7 +78,7 @@ export function studentPage(): string {
       score:'درجتك', pending:'سيراجع معلمك بعض الإجابات ويمنحك درجتك.',
       timeLeft:'الوقت المتبقي', timeUp:'انتهى الوقت. تم تسليم امتحانك تلقائياً.',
       answerHere:'اكتب إجابتك هنا', unanswered:'لم تتم الإجابة بعد',
-      saving:'جارٍ الحفظ…', savedOk:'تم الحفظ', true_:'صح', false_:'خطأ',
+      saving:'جارٍ الحفظ…', savedOk:'تم الحفظ', notSaved:'لم يُحفظ — تحقق من الواي فاي', true_:'صح', false_:'خطأ',
       loading:'انتظر من فضلك…', retry:'حاول مرة أخرى', close:'يمكنك إغلاق هذه الصفحة.',
       noName:'من فضلك ابحث عن اسمك في القائمة.', questionsLeft:'سؤال بدون إجابة'
     }
@@ -101,9 +101,17 @@ export function studentPage(): string {
   }
   function api(path, opts) {
     return fetch(path, opts).then(function (r) { return r.json(); }).then(function (j) {
-      if (!j.ok) throw new Error(j.error || 'Error');
+      if (!j.ok) { var e = new Error(j.error || 'Error'); e.code = j.code; throw e; }
       return j.data;
     });
+  }
+
+  // Another phone joined as this student, so this one no longer holds the
+  // exam. Stop everything and say so plainly: carrying on would let the
+  // student keep answering into nothing.
+  function takenOver(e) {
+    clearInterval(timer);
+    app.innerHTML = '<div class="card">' + err(e.message) + '</div>';
   }
   function err(msg) { return '<div class="err">' + esc(msg) + '</div>'; }
   function langBtn() {
@@ -206,9 +214,14 @@ export function studentPage(): string {
     if (note) note.textContent = t('saving');
     api('/api/answer', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ attemptId: S.paper.attemptId, questionId: qid, answer: value })
+      body: JSON.stringify({ attemptId: S.paper.attemptId, token: S.paper.token, questionId: qid, answer: value })
     }).then(function () { if (note) note.textContent = t('savedOk'); })
-      .catch(function () { if (note) note.textContent = ''; });
+      .catch(function (e) {
+        if (e.code === 'TAKEN_OVER') return takenOver(e);
+        // Anything else is usually the Wi-Fi: say it did not save, rather
+        // than leaving the last "saved" showing as though it had.
+        if (note) note.textContent = t('notSaved');
+      });
   }
   window.__pick = function (qid, value) { save(qid, value); render(); };
   window.__type = function (qid, value) { save(qid, value); };
@@ -274,7 +287,7 @@ export function studentPage(): string {
     app.innerHTML = '<div class="card center">' + esc(t('loading')) + '</div>';
     api('/api/submit', {
       method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ attemptId: S.paper.attemptId })
+      body: JSON.stringify({ attemptId: S.paper.attemptId, token: S.paper.token })
     }).then(function (d) {
       app.innerHTML =
         '<div class="card center">' +
@@ -286,6 +299,7 @@ export function studentPage(): string {
           '<p class="muted">' + esc(t('close')) + '</p>' +
         '</div>';
     }).catch(function (e) {
+      if (e.code === 'TAKEN_OVER') return takenOver(e);
       app.innerHTML = '<div class="card">' + err(e.message) +
         '<button onclick="location.reload()">' + esc(t('retry')) + '</button></div>';
     });

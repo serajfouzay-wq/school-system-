@@ -1,5 +1,6 @@
 import http from 'node:http'
 import os from 'node:os'
+import crypto from 'node:crypto'
 import { getDb } from '../db/index'
 import { getSchool } from './school'
 import { sessionByCode, listQuestions, getExam, markAttempt } from './exams'
@@ -79,6 +80,31 @@ function readJson(req: http.IncomingMessage): Promise<Record<string, unknown>> {
 
 /* ---------------- Route handlers ---------------- */
 
+/** Raised when a phone's token is no longer the attempt's current one. */
+class TakenOver extends Error {
+  readonly code = 'TAKEN_OVER'
+}
+
+/** 192 bits from the OS generator: not guessable, and not derived from the id. */
+const newToken = () => crypto.randomBytes(24).toString('base64url')
+
+/**
+ * Proves the caller holds this attempt. Constant-time, so response timing
+ * leaks nothing about how much of a guessed token was right.
+ */
+function assertHolds(attemptId: number, token: string): void {
+  const row = getDb()
+    .prepare(`SELECT access_token FROM exam_attempts WHERE id = ? AND deleted_at IS NULL`)
+    .get(attemptId) as { access_token: string | null } | undefined
+  const expected = Buffer.from(row?.access_token ?? '')
+  const given = Buffer.from(String(token ?? ''))
+  // Unknown attempt, never-tokened attempt, wrong length or wrong bytes all
+  // get the same answer: nothing here should help a guesser tell them apart.
+  if (!row?.access_token || expected.length !== given.length || !crypto.timingSafeEqual(expected, given)) {
+    throw new TakenOver('This exam was opened on another phone. Put your hand up and tell your teacher now.')
+  }
+}
+
 /** Who is sitting this exam — so a student can pick their own name. */
 function handleStudents(code: string) {
   const session = sessionByCode(code)
@@ -125,13 +151,21 @@ function handleJoin(code: string, studentId: number) {
     .get(session.id, studentId) as { id: number; submitted_at: string | null; started_at: string } | undefined
   if (existing?.submitted_at) throw new Error('You have already finished this exam.')
 
+  // A fresh token on every join. Resuming after a flat battery still works,
+  // because the student simply joins again — but it replaces the token, so if
+  // anyone else joins as this student the real one's phone stops at once and
+  // they say so, instead of their exam being quietly rewritten.
+  const token = newToken()
   let attemptId: number
   let startedAt: string
   if (existing) {
     attemptId = existing.id
     startedAt = existing.started_at
+    d.prepare(`UPDATE exam_attempts SET access_token = ? WHERE id = ?`).run(token, attemptId)
   } else {
-    const info = d.prepare(`INSERT INTO exam_attempts (session_id, student_id) VALUES (?, ?)`).run(session.id, studentId)
+    const info = d
+      .prepare(`INSERT INTO exam_attempts (session_id, student_id, access_token) VALUES (?, ?, ?)`)
+      .run(session.id, studentId, token)
     attemptId = Number(info.lastInsertRowid)
     startedAt = (d.prepare(`SELECT started_at FROM exam_attempts WHERE id = ?`).get(attemptId) as { started_at: string }).started_at
   }
@@ -151,6 +185,7 @@ function handleJoin(code: string, studentId: number) {
 
   return {
     attemptId,
+    token,
     startedAt,
     durationMinutes: exam.duration_minutes,
     title: exam.title,
@@ -162,13 +197,21 @@ function handleJoin(code: string, studentId: number) {
 }
 
 /** Saves as the student types, so a flat battery costs nothing. */
-function handleAnswer(attemptId: number, questionId: number, answer: string) {
+function handleAnswer(attemptId: number, token: string, questionId: number, answer: string) {
+  assertHolds(attemptId, token)
   const d = getDb()
   const open = d
-    .prepare(`SELECT 1 FROM exam_attempts a JOIN exam_sessions s ON s.id = a.session_id
+    .prepare(`SELECT s.exam_id FROM exam_attempts a JOIN exam_sessions s ON s.id = a.session_id
                WHERE a.id = ? AND a.submitted_at IS NULL AND s.status = 'open'`)
-    .get(attemptId)
+    .get(attemptId) as { exam_id: number } | undefined
   if (!open) throw new Error('This exam is finished.')
+  // A question from some other exam would be marked against the wrong paper.
+  const belongs = d
+    .prepare(`SELECT 1 FROM exam_questions WHERE id = ? AND exam_id = ? AND deleted_at IS NULL`)
+    .get(questionId, open.exam_id)
+  if (!belongs) throw new Error('That question is not on this exam.')
+  // An answer box is not a place to store a file.
+  if (answer.length > 5000) throw new Error('That answer is too long.')
 
   d.prepare(
     `INSERT INTO exam_answers (attempt_id, question_id, answer) VALUES (?, ?, ?)
@@ -177,7 +220,8 @@ function handleAnswer(attemptId: number, questionId: number, answer: string) {
   return { ok: true }
 }
 
-function handleSubmit(attemptId: number) {
+function handleSubmit(attemptId: number, token: string) {
+  assertHolds(attemptId, token)
   const d = getDb()
   const attempt = d.prepare(`SELECT submitted_at FROM exam_attempts WHERE id = ?`).get(attemptId) as
     { submitted_at: string | null } | undefined
@@ -278,17 +322,21 @@ export function start(desiredPort = 8080): Promise<ServerStatus> {
         const body = await readJson(req)
         return send(res, 200, {
           ok: true,
-          data: handleAnswer(Number(body.attemptId), Number(body.questionId), String(body.answer ?? '')),
+          data: handleAnswer(Number(body.attemptId), String(body.token ?? ''), Number(body.questionId), String(body.answer ?? '')),
         })
       }
       if (req.method === 'POST' && url.pathname === '/api/submit') {
         const body = await readJson(req)
-        return send(res, 200, { ok: true, data: handleSubmit(Number(body.attemptId)) })
+        return send(res, 200, { ok: true, data: handleSubmit(Number(body.attemptId), String(body.token ?? '')) })
       }
       return send(res, 404, { ok: false, error: 'Not found' })
     } catch (e) {
       // Messages here are read by students, so they stay plain and blameless.
-      return send(res, 400, { ok: false, error: e instanceof Error ? e.message : 'Something went wrong' })
+      return send(res, e instanceof TakenOver ? 403 : 400, {
+        ok: false,
+        error: e instanceof Error ? e.message : 'Something went wrong',
+        code: e instanceof TakenOver ? e.code : undefined,
+      })
     }
   })
 

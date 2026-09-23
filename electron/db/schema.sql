@@ -355,6 +355,11 @@ CREATE TABLE IF NOT EXISTS exam_attempts (
   max_score     REAL,
   needs_review  INTEGER NOT NULL DEFAULT 0,
   pushed_to_grades INTEGER NOT NULL DEFAULT 0,
+  /* The only thing that lets a phone write to this attempt. Attempt ids are
+     sequential, so on their own they let any student on the Wi-Fi rewrite or
+     submit a classmate's exam by guessing a neighbouring number. Replaced on
+     every join, so taking an attempt over locks the previous phone out. */
+  access_token  TEXT,
   deleted_at    TEXT,
   UNIQUE(session_id, student_id)
 );
