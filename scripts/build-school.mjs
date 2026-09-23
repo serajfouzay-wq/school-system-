@@ -13,6 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { makeData } from './make-data.mjs'
+import { isLocked, makeLicense } from './license-keys.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx'
@@ -36,6 +37,9 @@ const run = (cmd, cmdArgs, label) => {
 }
 
 const brand = JSON.parse(fs.readFileSync(path.resolve(ROOT, file), 'utf8'))
+// The same default scripts/brand.mjs gives, so the licence names the id the
+// app will actually have.
+brand.id ||= String(brand.appName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 // Windows will not accept these in a file name, and the installer is named
 // after the product.
 const productName = String(brand.appName).replace(/[<>:"/\\|?*]/g, '').trim()
@@ -74,6 +78,26 @@ try {
 }
 if (!preseeded) console.log('  none given — the client will use the setup wizard')
 
+// Computers already known get their licence inside the package, so they open
+// it straight away. Any other computer shows its code and waits for one.
+let licensed = false
+if (isLocked(brand) && brand.license?.machines?.length) {
+  try {
+    const { text, payload } = makeLicense({
+      brand: brand.id,
+      school: brand.school?.name || brand.appName,
+      machines: brand.license.machines,
+    })
+    fs.mkdirSync(preseedDir, { recursive: true })
+    fs.writeFileSync(path.join(preseedDir, 'license.key'), text + '\n')
+    licensed = true
+    console.log(`  licensed in advance for ${payload.machines.join(', ')}`)
+  } catch (e) {
+    console.error(`\n  Stopped: the licence could not be made.\n  ${e.message}`)
+    process.exit(1)
+  }
+}
+
 console.log('\nStep 4 of 5  bundle')
 run(npx, ['tsc', '--noEmit', '-p', 'tsconfig.json'], 'the typecheck')
 run(npx, ['vite', 'build'], 'the bundle')
@@ -94,10 +118,15 @@ run(npx, [
   // Copies build/preseed into the package as resources/preseed, which is
   // where the app looks on its first run. Only passed when there is something
   // to copy: electron-builder fails on a path that is not there.
-  ...(preseeded ? ['-c.extraResources=preseed'] : []),
+  ...(preseeded || licensed ? ['-c.extraResources=preseed'] : []),
 ], 'the package')
 
 console.log(`\nDone. Look in release/ for "${productName}".`)
 console.log(preseeded
-  ? '  The school\'s data is inside the package: they install it and their\n  students, classes and staff are already there.\n'
-  : '  The client will be asked to set the school up the first time they run it.\n')
+  ? '  The school\'s data is inside the package: they install it and their\n  students, classes and staff are already there.'
+  : '  The client will be asked to set the school up the first time they run it.')
+console.log(!isLocked(brand)
+  ? '  Not locked: this copy runs on any computer.\n'
+  : licensed
+    ? '  Locked: it opens on the computers licensed above. Any other computer\n  shows its code; make it a licence on the workshop page.\n'
+    : '  Locked: on first start it shows the computer\'s code. Make that\n  computer a licence on the workshop page and give it to the school.\n')

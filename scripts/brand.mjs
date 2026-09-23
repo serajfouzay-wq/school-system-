@@ -13,6 +13,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildPalette, foregroundFor, toRgbTriplet, contrast } from '../shared/palette.mjs'
 import { resolveModules, MODULE_NAMES } from '../shared/modules.mjs'
+import { publicKeyForBuild, keyFingerprint, ensureKeys, isLocked, KEYS_DIR } from './license-keys.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const GENERATED_NOTE = '/* Written by scripts/brand.mjs — do not edit by hand. */'
@@ -62,7 +63,7 @@ ${lines.join('\n')}
   return { palette, fg }
 }
 
-function writeTs(brand, palette, fg) {
+function writeTs(brand, palette, fg, licenseKey) {
   const data = {
     id: brand.id,
     appName: brand.appName,
@@ -84,7 +85,12 @@ function writeTs(brand, palette, fg) {
   fs.writeFileSync(
     path.join(ROOT, 'electron/brand.generated.json'),
     JSON.stringify(
-      { id: brand.id, appName: brand.appName, color: brand.color, school: brand.school, modules: brand.modules },
+      {
+        id: brand.id, appName: brand.appName, color: brand.color, school: brand.school, modules: brand.modules,
+        // Present only on a locked build. The app refuses to open a school's
+        // data on a computer no licence names.
+        ...(licenseKey ? { licenseKey } : {}),
+      },
       null,
       2
     ) + '\n'
@@ -101,7 +107,9 @@ if (!file) {
 
 const { brand } = loadBrand(file)
 const { palette, fg } = writeCss(brand)
-writeTs(brand, palette, fg)
+const locked = isLocked(brand)
+const madeKeys = locked && ensureKeys()
+writeTs(brand, palette, fg, locked ? publicKeyForBuild() : null)
 
 const ratio = contrast(palette[600], fg)
 console.log(`  brand:    ${brand.appName}`)
@@ -110,6 +118,12 @@ console.log(`  text on it: ${fg} (${ratio.toFixed(2)}:1${ratio >= 4.5 ? ', reada
 const off = MODULE_NAMES.filter((m) => !brand.modules[m])
 console.log(`  modules:  ${off.length ? `all except ${off.join(', ')}` : 'all included'}`)
 console.log(`  school:   ${brand.school.name ?? '(not set — the wizard will ask)'}${brand.school.name_ar ? ` / ${brand.school.name_ar}` : ''}`)
+console.log(`  licence:  ${locked ? `locked to licensed computers (key ${keyFingerprint()})` : 'not locked - runs on any computer'}`)
+if (madeKeys) {
+  console.log(`\n  A new signing key was made in ${KEYS_DIR}`)
+  console.log('  BACK THAT FOLDER UP. Without it you cannot activate new computers')
+  console.log('  for the schools you deliver.\n')
+}
 console.log(`  wrote:    src/brand.generated.css, src/brand.generated.ts,`)
 console.log(`            electron/brand.generated.json`)
 if (ratio < 4.5) {

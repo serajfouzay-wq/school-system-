@@ -505,3 +505,27 @@ export interface TransportSummary {
   outstanding: number
   unpaidRiders: number
 }
+
+/* ---------- Licence ---------- */
+
+export type LicenseProblem =
+  /** No licence anywhere. A fresh install, waiting to be activated. */
+  | 'missing'
+  /** A genuine licence, but for other computers: this copy was moved. */
+  | 'otherComputer'
+  /** A genuine licence for a different school's build. */
+  | 'otherSchool'
+  /** Not signed by the workshop, or damaged on the way. */
+  | 'invalid'
+  /** This computer would not say what it is, so no licence can match it. */
+  | 'noComputerCode'
+
+export interface LicenseStatus {
+  required: boolean
+  licensed: boolean
+  machineCode: string | null
+  /** Whose copy it is, once licensed. */
+  school: string | null
+  issued: string | null
+  problem: LicenseProblem | null
+}

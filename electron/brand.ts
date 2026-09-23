@@ -32,6 +32,8 @@ export interface MainBrand {
   school: SchoolDefaults
   /** Which optional parts this build includes. */
   modules: ModuleSet
+  /** The workshop's public key, on a build locked to licensed computers. */
+  licenseKey?: string
 }
 
 const brand: MainBrand = {

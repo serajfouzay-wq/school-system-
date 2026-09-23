@@ -10,6 +10,10 @@ preseed/
 clients/*
 !clients/example/
 
+# The workshop's licence signing key. Whoever holds the private half can
+# activate copies of the system, so it never leaves the workshop machine.
+keys/
+
 # Brand files for real clients, which carry their details. The examples stay.
 brands/*
 !brands/default.json

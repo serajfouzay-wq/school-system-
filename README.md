@@ -113,6 +113,7 @@ shared/permissions.ts      Roles, capabilities, and who may act on whom
 shared/palette.mjs         One colour -> eleven shades, in OKLCH
 
 shared/modules.mjs         Which optional parts exist, and what each one owns
+shared/license.mjs         The licence format and computer codes, for both sides
 
 brands/                    One file per school: name, colour, details
 clients/                   Their spreadsheets, kept out of version control
@@ -124,10 +125,13 @@ scripts/
   make-data.mjs            Turns those into the database the build ships
   build-school.mjs         The whole thing: `npm run school`
   builder/                 The page behind `npm run builder`
+  license-keys.mjs         The workshop's signing key; makes licences
+keys/                      That key. Never committed, never shipped: back it up
+electron/license.ts        Checks the licence before anything else is allowed
 electron/seed-cli.ts       Builds a school's database headlessly, at build time
 
 src/                       Renderer — React, no filesystem or database access
-  i18n/                    en.json / ar.json (709 keys, generated in lockstep)
+  i18n/                    en.json / ar.json (733 keys, kept in lockstep)
   lib/                     api client, formatting, printing, hooks
   store/app.ts             Zustand: session, language, preferences, toasts
   components/ui/           Button, Card, Field, Modal, DataTable, Wizard, …
@@ -326,6 +330,62 @@ still works:
 Tailwind's `brand-*` classes read the CSS variables rather than baked-in hex, so
 one build can wear any colour. Charts and printed documents — which cannot see
 the stylesheet — are handed the palette directly.
+
+### Keeping a copy on the school's computers
+
+Every client build is **locked**: it opens only on computers it holds a licence
+for. Copying it to another computer — the installer, the installed program, or
+the data folder — does not give anyone a working system to resell.
+
+**How it works.** The first client build makes a signing key in `keys/` on the
+workshop machine. Each build carries the public half; the private half never
+leaves `keys/`. On start the program works out a code for the computer it is on
+(from the identity Windows gives an installation, hashed) and looks for a
+licence, signed with that key, naming both this school's build and this code.
+Without one it shows its code and an activation screen, and the main process
+refuses every other action — the school's data stays closed, not merely hidden.
+A licence cannot be edited to add a computer (the signature breaks), moved to
+another school's build (it names the build), or made without `keys/`.
+
+**Activating a computer.**
+
+1. Install as usual. The first screen shows the computer's code, e.g.
+   `K7QF-3M9D-XW2P-A4TE`, and your note (put your phone number in it).
+2. On the workshop page, **Activate a computer**: pick the school, type the
+   code, **Make activation key**.
+3. Give the key back: **Save as a file** onto the USB stick and press **Open
+   the licence file** on their screen, or **Copy** it into WhatsApp and they
+   paste it. Words around it in the message do not matter.
+
+If you already know a computer's code when you build, put it in **Their
+computer codes** and that computer opens the program straight away with no
+activation step. Every licence you make is also saved under
+`clients/<school>/licences/`, as a record of which computers each school has.
+
+A licence is kept beside the school's data, so reinstalling or updating the
+program keeps it. Reinstalling Windows or replacing the computer gives a new
+code; activate it the same way.
+
+**Back up `keys/`.** Lose it and schools you have already set up keep working,
+but you cannot activate a new or replaced computer for them without building
+and installing their copy again. Whoever has `license-private.pem` can
+activate copies of your system, so keep it to yourself.
+
+A demo to show a prospective school can be built unlocked: untick **Lock this
+copy** on the page, or put `"license": false` in the brand file. The plain
+default build is never locked.
+
+**The executable is hardened too.** Packaging switches off Electron's ways
+around the check: running the program as plain Node, attaching a debugger,
+`NODE_OPTIONS`, and loading the app from anywhere but its own archive. On
+Windows the archive is also checked against a fingerprint stamped into the
+`.exe`, so editing the check out of `app.asar` stops the program starting.
+
+**What this does not do.** No desktop program is uncrackable. This stops the
+realistic threat — someone copying a school's installation, or your installer,
+to sell on — and anyone short of a skilled reverse engineer willing to patch the
+executable. The school's database itself is an ordinary SQLite file: it belongs
+to the school, and locking the program does not encrypt it.
 
 ### Two schools on one computer
 

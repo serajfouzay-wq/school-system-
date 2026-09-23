@@ -769,5 +769,27 @@
     "denied": "Your account is not allowed to do this",
     "deniedBody": "Ask the school owner or an administrator if you need access.",
     "whatCanIDo": "What can this person do?"
+  },
+  "license": {
+    "title": "Activate this copy",
+    "intro": "This copy of {{app}} works only on the computers it is licensed for. To use it on this computer, send the code below to the person who installed it. They will send you back an activation key or a licence file.",
+    "yourCode": "This computer's code",
+    "copy": "Copy the code",
+    "copied": "Copied",
+    "fromFile": "Open the licence file",
+    "fromFileHint": "If you were given a licence file, for example on a USB stick.",
+    "orPaste": "Or paste the activation key you were sent",
+    "pastePlaceholder": "SSL1.…",
+    "activate": "Activate",
+    "noKey": "Paste the activation key first.",
+    "done": "Activated. This computer is now licensed.",
+    "licensedTo": "Licensed to {{school}}",
+    "thisComputer": "This computer: {{code}}",
+    "problem": {
+      "otherComputer": "This copy was licensed for a different computer, so it cannot open here. Send this computer's code to the person who installed it.",
+      "otherSchool": "This licence belongs to a different school's copy of the program.",
+      "invalid": "That is not a valid licence. Check that the whole key was copied, then try again.",
+      "noComputerCode": "This computer did not give its identity, so it cannot be activated. Contact the person who installed the program."
+    }
   }
 }

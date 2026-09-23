@@ -14,6 +14,8 @@ import path from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { MODULE_NAMES } from '../../shared/modules.mjs'
+import { makeLicense, keyFingerprint, ensureKeys, isLocked, KEYS_DIR } from '../license-keys.mjs'
+import { parseMachineCodes } from '../../shared/license.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(HERE, '..', '..')
@@ -72,6 +74,10 @@ function stage(form) {
     notes: form.notes || null,
   }
   if (Object.keys(data).length) brand.data = data
+  // Locked unless asked otherwise. Computer codes already known go into the
+  // build, so those computers open it with no activation step at all.
+  if (form.license === false) brand.license = false
+  else if (form.machines?.length) brand.license = { machines: form.machines }
 
   const brandFile = path.join(ROOT, 'brands', `${id}.json`)
   fs.mkdirSync(path.dirname(brandFile), { recursive: true })
@@ -98,7 +104,7 @@ const server = http.createServer(async (req, res) => {
       brands: files.map((f) => {
         try {
           const b = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'))
-          return { file: f, id: b.id, appName: b.appName, color: b.color }
+          return { file: f, id: b.id, appName: b.appName, color: b.color, locked: isLocked(b) }
         } catch { return null }
       }).filter(Boolean),
     })
@@ -109,10 +115,46 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, JSON.parse(fs.readFileSync(file, 'utf8')))
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/license/key') {
+    const made = ensureKeys()
+    return send(res, 200, { fingerprint: keyFingerprint(), folder: KEYS_DIR, made })
+  }
+
+  // An activation key for one computer, for a school already built. Saved
+  // beside that school's other files as well as returned, so there is always
+  // a record of which computers each school has.
+  if (req.method === 'POST' && url.pathname === '/api/license') {
+    let body
+    try { body = await readBody(req) } catch (e) { return send(res, 400, { error: e.message }) }
+    const file = path.join(ROOT, 'brands', path.basename(String(body.brand || '')))
+    if (!body.brand || !fs.existsSync(file)) return send(res, 400, { error: 'Choose which school this computer belongs to.' })
+    const brand = JSON.parse(fs.readFileSync(file, 'utf8'))
+    if (!isLocked(brand)) return send(res, 400, { error: `${brand.appName} was built unlocked, so it needs no activation.` })
+    const { codes, bad } = parseMachineCodes(body.machines)
+    if (bad.length) return send(res, 400, { error: `"${bad[0]}" is not a computer code. It looks like K7QF-3M9D-XW2P-A4TE.` })
+    try {
+      const { text, payload } = makeLicense({
+        brand: brand.id,
+        school: brand.school?.name || brand.appName,
+        machines: codes,
+      })
+      const dir = path.join(ROOT, 'clients', slug(brand.id), 'licences')
+      fs.mkdirSync(dir, { recursive: true })
+      const name = `${payload.machines.join('+')}.licence`
+      fs.writeFileSync(path.join(dir, name), text + '\n')
+      return send(res, 200, { text, payload, fileName: `${brand.appName} - ${payload.machines[0]}.licence` })
+    } catch (e) {
+      return send(res, 400, { error: e.message })
+    }
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/build') {
     let form
     try { form = await readBody(req) } catch (e) { return send(res, 400, { error: e.message }) }
     if (!form.appName || !form.color) return send(res, 400, { error: 'A name and a colour are needed' })
+    const { codes, bad } = parseMachineCodes(form.machines)
+    if (bad.length) return send(res, 400, { error: `"${bad[0]}" is not a computer code. It looks like K7QF-3M9D-XW2P-A4TE.` })
+    form.machines = codes
 
     let staged
     try { staged = stage(form) } catch (e) { return send(res, 500, { error: e.message }) }

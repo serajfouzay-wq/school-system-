@@ -22,6 +22,11 @@ import { ReportsPage } from '@/features/reports/ReportsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { RecycleBinPage } from '@/features/recycle/RecycleBinPage'
 import { HelpPage } from '@/features/help/HelpPage'
+import { ActivationScreen } from '@/features/license/ActivationScreen'
+import { api } from '@/lib/api'
+import { brand } from '@/lib/brand'
+import i18n, { applyLanguage } from '@/i18n'
+import type { LicenseStatus } from '@shared/types'
 
 export default function App() {
   const ready = useApp((s) => s.ready)
@@ -30,9 +35,21 @@ export default function App() {
   const user = useApp((s) => s.user)
   const screen = useApp((s) => s.screen)
   const [bootError, setBootError] = useState<string | null>(null)
+  // The licence comes first: until this computer is licensed, nothing else in
+  // the school's data can be read, not even its name.
+  const [license, setLicense] = useState<LicenseStatus | null>(null)
 
   useEffect(() => {
-    boot().catch((e: Error) => setBootError(e.message))
+    api.license
+      .status()
+      .then((status) => {
+        setLicense(status)
+        if (status.licensed) return boot()
+        const lang = brand.school.language === 'ar' ? 'ar' : 'en'
+        applyLanguage(lang)
+        return i18n.changeLanguage(lang).then(() => undefined)
+      })
+      .catch((e: Error) => setBootError(e.message))
   }, [boot])
 
   if (bootError) {
@@ -53,6 +70,20 @@ export default function App() {
           </p>
         </div>
       </div>
+    )
+  }
+
+  if (license && !license.licensed) {
+    return (
+      <ActivationScreen
+        status={license}
+        onActivated={() => {
+          setLicense({ ...license, licensed: true })
+          boot()
+            .then(() => useApp.getState().toast(i18n.t('license.done'), 'success'))
+            .catch((e: Error) => setBootError(e.message))
+        }}
+      />
     )
   }
 

@@ -6,6 +6,8 @@ import { TextInput } from '@/components/ui/Field'
 import { EmptyState } from '@/components/ui/Feedback'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { brand } from '@/lib/brand'
+import { api } from '@/lib/api'
+import { useAsync } from '@/lib/hooks'
 
 interface Article { id: string; title: string; body: string[] }
 
@@ -77,6 +79,7 @@ export function HelpPage() {
   const { t } = useTranslation()
   const articles = useArticles()
   const [query, setQuery] = useState('')
+  const { data: license } = useAsync(() => api.license.status(), [])
   const [open, setOpen] = useState<string | null>(articles[0]?.id ?? null)
 
   const filtered = query.trim()
@@ -97,6 +100,15 @@ export function HelpPage() {
           <CardTitle>{t('help.fromYourSchool')}</CardTitle>
           <p className="whitespace-pre-line">{brand.notes}</p>
         </Card>
+      )}
+
+      {/* Which computer this is, for the day it is replaced and needs a new
+          licence: the code is here to read out without hunting for it. */}
+      {license?.required && license.licensed && (
+        <p className="mb-5 text-sm text-ink-500">
+          {license.school && <>{t('license.licensedTo', { school: license.school })} · </>}
+          <span dir="ltr">{t('license.thisComputer', { code: license.machineCode ?? '—' })}</span>
+        </p>
       )}
 
       <div className="mb-5 max-w-xl">

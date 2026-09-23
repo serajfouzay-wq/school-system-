@@ -138,8 +138,19 @@
         <div><label for="ownerPin">Their PIN</label><input id="ownerPin" type="text" inputmode="numeric" placeholder="0000" maxlength="8"></div>
       </div>
       <div class="row one">
-        <div><label for="notes">A note for their staff (appears on the Help screen)</label>
+        <div><label for="notes">A note for their staff: shown on the Help screen and the activation screen, so put your phone number here</label>
           <textarea id="notes" rows="2" placeholder="If the program will not start, call ..."></textarea></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Keep it on their computers</h2>
+      <p class="hint">A locked copy opens only on computers you have activated. Copying it — the installer, the installed program or its data — to another computer gives that computer a different code, and it will not open there.</p>
+      <label class="mod" style="margin-bottom:12px"><input type="checkbox" id="lock" checked><span>Lock this copy to the school's computers (recommended)</span></label>
+      <div class="row one" id="machinesRow">
+        <div><label for="machines">Their computer codes, if you already have them</label>
+          <textarea id="machines" rows="2" placeholder="K7QF-3M9D-XW2P-A4TE" style="font-family:ui-monospace,monospace"></textarea>
+          <p class="hint" style="margin:6px 0 0">Optional. One per line. Those computers open it straight away. Any other computer shows its code the first time the program starts — activate it with <b>Activate a computer</b> on the right.</p></div>
       </div>
     </div>
 
@@ -169,6 +180,26 @@
         <div class="menu" id="menu"></div>
       </div>
     </div>
+    <div class="card" id="activateCard">
+      <h2>Activate a computer</h2>
+      <p class="hint">The school reads you the code on their screen. Pick their school, type the code, and give them the key: as a file on the USB stick, or paste it into WhatsApp.</p>
+      <label for="actBrand">School</label>
+      <select id="actBrand" style="margin-bottom:10px"><option value="">—</option></select>
+      <label for="actCode">Computer code</label>
+      <input id="actCode" type="text" placeholder="K7QF-3M9D-XW2P-A4TE" style="font-family:ui-monospace,monospace;margin-bottom:10px">
+      <button id="actGo" type="button">Make activation key</button>
+      <div class="warn" id="actError" hidden></div>
+      <div id="actResult" hidden style="margin-top:12px">
+        <label for="actKey">Activation key</label>
+        <textarea id="actKey" rows="4" readonly style="font-family:ui-monospace,monospace;font-size:12px"></textarea>
+        <div class="bar" style="margin-top:8px">
+          <button type="button" class="ghost" id="actCopy">Copy</button>
+          <button type="button" class="ghost" id="actSave">Save as a file</button>
+        </div>
+      </div>
+      <p class="hint" id="keyInfo" style="margin:14px 0 0"></p>
+    </div>
+
     <div class="card">
       <h2>Start from an earlier one</h2>
       <p class="hint">Loads a school you made before, to change and build again.</p>
@@ -300,7 +331,57 @@ $('existing').addEventListener('change', async (e) => {
   document.querySelectorAll('[data-module]').forEach((c) => {
     c.checked = b.modules ? b.modules[c.dataset.module] !== false : true
   })
+  $('lock').checked = b.license !== false
+  $('machines').value = (b.license?.machines ?? []).join('\n')
+  syncLock()
   refresh()
+})
+
+// --- locking ----------------------------------------------------------------
+function syncLock() { $('machinesRow').style.display = $('lock').checked ? '' : 'none' }
+$('lock').addEventListener('change', syncLock)
+
+// --- activating a computer --------------------------------------------------
+async function loadActivatable() {
+  const { brands } = await (await fetch('/api/brands')).json()
+  const keep = $('actBrand').value
+  $('actBrand').innerHTML = '<option value="">—</option>' + brands
+    .filter((b) => b.locked)
+    .map((b) => `<option value="${b.file}">${b.appName}</option>`).join('')
+  $('actBrand').value = keep
+}
+await loadActivatable()
+
+const keyInfo = await (await fetch('/api/license/key')).json()
+$('keyInfo').innerHTML = `Signing key <code>${keyInfo.fingerprint}</code> in <code>${keyInfo.folder}</code>.` +
+  ' <b>Keep a copy of that folder somewhere safe.</b> Without it you cannot activate new computers for the schools you have delivered.'
+
+let lastKey = null
+$('actGo').addEventListener('click', async () => {
+  $('actError').hidden = true; $('actResult').hidden = true
+  const res = await fetch('/api/license', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ brand: $('actBrand').value, machines: $('actCode').value }),
+  })
+  const out = await res.json()
+  if (!res.ok) { $('actError').textContent = out.error; $('actError').hidden = false; return }
+  lastKey = out
+  $('actKey').value = out.text
+  $('actResult').hidden = false
+})
+$('actCopy').addEventListener('click', async () => {
+  $('actKey').select()
+  try { await navigator.clipboard.writeText($('actKey').value) } catch { document.execCommand('copy') }
+  $('actCopy').textContent = 'Copied'
+  setTimeout(() => { $('actCopy').textContent = 'Copy' }, 2000)
+})
+$('actSave').addEventListener('click', () => {
+  if (!lastKey) return
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([lastKey.text + '\n'], { type: 'text/plain' }))
+  a.download = lastKey.fileName.replace(/[<>:"/\\|?*]/g, '')
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
 })
 
 // --- build ---------------------------------------------------------------
@@ -325,6 +406,8 @@ $('go').addEventListener('click', async () => {
       language: $('language').value,
     },
     files: csv,
+    license: $('lock').checked,
+    machines: $('lock').checked ? $('machines').value : '',
     owner: ($('ownerName').value.trim() || $('ownerPin').value.trim())
       ? { name: $('ownerName').value.trim() || 'School Owner', username: 'owner', pin: $('ownerPin').value.trim() || '0000' }
       : undefined,
@@ -347,6 +430,7 @@ $('go').addEventListener('click', async () => {
       log.textContent += dec.decode(value, { stream: true })
       log.scrollTop = log.scrollHeight
     }
+    if (log.textContent.includes('__DONE__')) void loadActivatable()
     if (log.textContent.includes('__DONE__')) {
       const where = log.textContent.split('__DONE__')[1].trim().split('\n')[0]
       $('status').innerHTML = `<b style="color:#059669">Ready.</b> Look in <code>${where}</code>`

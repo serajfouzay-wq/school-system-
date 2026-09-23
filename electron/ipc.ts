@@ -25,6 +25,7 @@ import { getDb } from './db/index'
 import { can } from '../shared/permissions'
 import { actionIsOff } from '../shared/modules.mjs'
 import brand from './brand'
+import * as license from './license'
 import type { Capability } from '../shared/permissions'
 
 /** The signed-in user, tracked in the main process so services can stamp
@@ -81,6 +82,9 @@ const REQUIRED: Record<string, Capability | 'public'> = {
   'auth.resetPin': 'public',
   'app.version': 'public',
   'app.dataFolder': 'public',
+  'license.status': 'public',
+  'license.activate': 'public',
+  'license.activateFromFile': 'public',
   'files.readImage': 'public',
   'demo.isSeeded': 'public',
 
@@ -253,6 +257,12 @@ const REQUIRED: Record<string, Capability | 'public'> = {
   'print.html': 'reports.view',
   'print.pdf': 'reports.view',
 }
+
+/**
+ * What an unactivated copy may still do: say what it is, and be activated.
+ * Everything else — the school's name included — waits for a licence.
+ */
+const BEFORE_LICENSE = new Set(['license.status', 'license.activate', 'license.activateFromFile', 'app.version'])
 
 /** True only on a brand-new machine, where nobody has been created yet. */
 function setupOpen(): boolean {
@@ -575,6 +585,19 @@ const handlers: Record<string, Handler> = {
   },
 
   /* ---- app ---- */
+  'license.status': () => license.licenseStatus(),
+  'license.activate': ({ text }) => license.activate(String(text ?? '')),
+  'license.activateFromFile': async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const opts: Electron.OpenDialogOptions = {
+      title: 'Choose the licence file',
+      properties: ['openFile'],
+      filters: [{ name: 'Licence', extensions: ['key', 'licence', 'license', 'txt'] }, { name: 'All files', extensions: ['*'] }],
+    }
+    const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
+    if (res.canceled || !res.filePaths[0]) return null
+    return license.activateFromFile(res.filePaths[0])
+  },
   'app.version': () => app.getVersion(),
   'app.dataFolder': () => app.getPath('userData'),
 }
@@ -583,6 +606,13 @@ export function registerIpc(): void {
   ipcMain.handle('api:call', async (_event, method: string, payload: unknown) => {
     const handler = handlers[method]
     if (!handler) return { ok: false, error: `Unknown action: ${method}` }
+
+    // A copy not licensed for this computer opens nothing. This sits in front
+    // of every other check, so the school's data is closed whatever the screen
+    // in front of it asks for.
+    if (!BEFORE_LICENSE.has(method) && !license.isLicensed()) {
+      return { ok: false, error: 'This copy is not activated on this computer.' }
+    }
 
     // A module this build left out is not merely hidden: the action behind it
     // is refused, so nothing reaches data the school did not buy.

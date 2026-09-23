@@ -30,6 +30,7 @@
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@electron/fuses": "^1.8.0",
     "@types/better-sqlite3": "^7.6.12",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",

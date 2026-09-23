@@ -72,7 +72,7 @@ function extractFromTarGz(archive, wantedSuffix) {
   throw new Error(`${wantedSuffix} not found inside ${archive}`)
 }
 
-exports.default = async function afterPack(context) {
+async function ensureNativeBinary(context) {
   const platform = context.electronPlatformName // 'win32' | 'darwin' | 'linux'
   const arch = context.arch === 1 ? 'x64' : context.arch === 3 ? 'arm64' : 'x64'
   const expected = platform === 'win32' ? 'windows' : platform === 'darwin' ? 'mac' : 'linux'
@@ -122,4 +122,45 @@ exports.default = async function afterPack(context) {
     throw new Error(`Replacement binary is a ${now} build, not ${expected}. Refusing to ship a broken package.`)
   }
   console.log(`  • replaced better-sqlite3 with the ${platform}-${arch} prebuild (${(binary.length / 1024).toFixed(0)} KB)`)
+}
+
+/**
+ * Electron's own switches for what the program binary will agree to do,
+ * written into the executable itself.
+ *
+ * A locked copy checks its licence in code inside app.asar. Without these, that
+ * code could be edited out of the archive, or the executable run as plain Node,
+ * or a debugger attached to step past the check. With them:
+ *
+ *   - the archive's contents are checked against a hash stamped into the
+ *     executable at build time, so an edited app.asar does not start (Windows
+ *     and macOS; Linux has no such check);
+ *   - the app is only ever loaded from that archive, never from a loose folder
+ *     put beside it;
+ *   - ELECTRON_RUN_AS_NODE, NODE_OPTIONS and --inspect are all ignored.
+ */
+async function hardenExecutable(context) {
+  const { flipFuses, FuseVersion, FuseV1Options } = require('@electron/fuses')
+  const platform = context.electronPlatformName
+  const name = context.packager.appInfo.productFilename
+  const executable =
+    platform === 'win32' ? path.join(context.appOutDir, `${name}.exe`)
+    : platform === 'darwin' ? path.join(context.appOutDir, `${name}.app`)
+    : path.join(context.appOutDir, context.packager.executableName)
+
+  await flipFuses(executable, {
+    version: FuseVersion.V1,
+    resetAdHocDarwinSignature: platform === 'darwin' && context.arch === 3,
+    [FuseV1Options.RunAsNode]: false,
+    [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+    [FuseV1Options.EnableNodeCliInspectArguments]: false,
+    [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
+    [FuseV1Options.OnlyLoadAppFromAsar]: true,
+  })
+  console.log('  • hardened the executable (archive integrity, no Node mode, no debugger)')
+}
+
+exports.default = async function afterPack(context) {
+  await ensureNativeBinary(context)
+  await hardenExecutable(context)
 }

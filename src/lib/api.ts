@@ -6,7 +6,7 @@ import type {
   TeacherAssignment, AttendanceStatus, StaffAttendanceStatus,
   Exam, ExamQuestion, ExamAttempt, AttemptDetail, ServerStatus,
   Recipient, PreparedMessage, MessagePurpose,
-  Book, Loan, LibrarySummary, Route, Rider, TransportSummary,
+  Book, Loan, LibrarySummary, Route, Rider, TransportSummary, LicenseStatus,
 } from '@shared/types'
 
 declare global {
@@ -309,6 +309,13 @@ export const api = {
       call<string | null>('export.csv', { suggestedName, columns, rows }),
     print: (html: string) => call<{ success: boolean; reason?: string }>('print.html', { html }),
     pdf: (html: string, suggestedName: string) => call<string | null>('print.pdf', { html, suggestedName }),
+  },
+
+  license: {
+    status: () => call<LicenseStatus>('license.status'),
+    activate: (text: string) => call<LicenseStatus>('license.activate', { text }),
+    /** Null when the school closed the file picker without choosing. */
+    activateFromFile: () => call<LicenseStatus | null>('license.activateFromFile'),
   },
 
   app: {

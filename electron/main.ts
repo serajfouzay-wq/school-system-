@@ -7,6 +7,7 @@ import { getDb, closeDb, purgeExpiredBinEntries } from './db/index'
 import { registerIpc } from './ipc'
 import { scheduleAutoBackup, stopAutoBackup } from './services/backup'
 import { stop as stopExamServer } from './services/examServer'
+import { licenseStatus } from './license'
 
 // Pin the data-folder name explicitly. Electron otherwise derives it from
 // whichever package.json it finds, so the school's database could land in a
@@ -246,6 +247,15 @@ if (!gotLock) {
       note('database opened')
     } catch (e) {
       return reportFatal('opening the database', e)
+    }
+
+    try {
+      const lic = licenseStatus()
+      note(lic.required
+        ? `licence: ${lic.licensed ? 'active' : `not active (${lic.problem})`} on ${lic.machineCode ?? 'unknown computer'}`
+        : 'licence: not required for this build')
+    } catch (e) {
+      note(`could not check the licence: ${String(e)}`)
     }
 
     try {
