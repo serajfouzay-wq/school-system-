@@ -14,6 +14,9 @@ files:
   - build/icon.png
   - package.json
   - "!**/*.map"
+  # Build-time tools: they run where the package is made, never on a client.
+  - "!dist-electron/seed-cli.js"
+  - "!dist-electron/bench-cli.js"
 
 # Chromium ships 55 locale files (41 MB) for its own menus and dialogs. The app
 # is English and Arabic only, so the rest are dead weight in every download.

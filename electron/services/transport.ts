@@ -1,3 +1,4 @@
+import { amount, id, isoDate, optionalText, paymentMethod } from '../validate'
 import { getDb, softDelete, today } from '../db/index'
 import { getSchool } from './school'
 
@@ -260,15 +261,24 @@ export function recordPayment(
   input: { rider_id: number; amount_paid: number; date?: string; method?: string; note?: string | null },
   userId: number | null
 ) {
-  if (!(input.amount_paid > 0)) throw new Error('Please type an amount greater than zero.')
-  const receipt = nextReceiptNo()
-  const info = getDb()
-    .prepare(
-      `INSERT INTO transport_payments (rider_id, amount_paid, date, method, receipt_no, note, recorded_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(input.rider_id, input.amount_paid, input.date ?? today(), input.method ?? 'cash', receipt, input.note ?? null, userId)
-  return listPayments(input.rider_id).find((p) => p.id === Number(info.lastInsertRowid))
+  const row = {
+    rider_id: id(input.rider_id, 'The rider'),
+    amount_paid: amount(input.amount_paid),
+    date: input.date ? isoDate(input.date, 'The payment date') : today(),
+    method: paymentMethod(input.method),
+    note: optionalText(input.note, 'The note'),
+  }
+  const d = getDb()
+  const insert = d.transaction(() =>
+    d
+      .prepare(
+        `INSERT INTO transport_payments (rider_id, amount_paid, date, method, receipt_no, note, recorded_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(row.rider_id, row.amount_paid, row.date, row.method, nextReceiptNo(), row.note, userId)
+  )
+  const newId = Number(insert().lastInsertRowid)
+  return listPayments(row.rider_id).find((p) => p.id === newId)
 }
 
 export function deletePayment(id: number, userId: number | null): void {

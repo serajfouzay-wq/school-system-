@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { gender, lenientDate, oneOf, optionalId, optionalText, text, STUDENT_STATUS } from '../validate'
 import { getDb, softDelete, filesDir, today } from '../db/index'
 import type { Student, StudentProfile } from '../../shared/types'
 import { getSchool } from './school'
@@ -59,22 +60,24 @@ export type StudentInput = Partial<Omit<Student, 'id' | 'school_id' | 'created_a
 
 export function saveStudent(input: StudentInput): Student {
   const d = getDb()
-  if (!input.full_name?.trim()) throw new Error('Please type the student\'s name.')
+  // Every way a student arrives — the form, a spreadsheet import, a build
+  // that ships with the school's data — comes through here, so this is where
+  // the rules are applied.
   const fields = {
-    section_id: input.section_id ?? null,
-    full_name: input.full_name.trim(),
-    full_name_ar: input.full_name_ar?.trim() || null,
+    section_id: optionalId(input.section_id, 'The class'),
+    full_name: text(input.full_name, "The student's name"),
+    full_name_ar: optionalText(input.full_name_ar, 'The Arabic name', 200),
     photo_path: input.photo_path ?? null,
-    dob: input.dob ?? null,
-    gender: input.gender ?? null,
-    guardian_name: input.guardian_name?.trim() || null,
-    guardian_phone: input.guardian_phone?.trim() || null,
-    guardian_address: input.guardian_address ?? null,
-    emergency_contact: input.emergency_contact ?? null,
-    enrollment_date: input.enrollment_date ?? today(),
-    previous_school: input.previous_school ?? null,
-    medical_notes: input.medical_notes ?? null,
-    status: input.status ?? 'active',
+    dob: lenientDate(input.dob),
+    gender: gender(input.gender),
+    guardian_name: optionalText(input.guardian_name, "The guardian's name", 200),
+    guardian_phone: optionalText(input.guardian_phone, "The guardian's phone", 40),
+    guardian_address: optionalText(input.guardian_address, 'The address'),
+    emergency_contact: optionalText(input.emergency_contact, 'The emergency contact'),
+    enrollment_date: lenientDate(input.enrollment_date) ?? today(),
+    previous_school: optionalText(input.previous_school, 'The previous school', 200),
+    medical_notes: optionalText(input.medical_notes, 'The medical notes', 2000),
+    status: input.status ? oneOf(input.status, STUDENT_STATUS, "The student's status") : 'active',
   }
   if (input.id) {
     d.prepare(

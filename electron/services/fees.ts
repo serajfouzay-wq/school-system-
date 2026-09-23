@@ -1,4 +1,5 @@
-import { getDb, softDelete, today } from '../db/index'
+import { amount, id, isoDate, optionalId, optionalText, paymentMethod } from '../validate'
+import { getDb, periodRange, softDelete, today } from '../db/index'
 import type { FeePayment, FeeStructure, ReceiptData, StudentFeeSummary, School } from '../../shared/types'
 import { getSchool } from './school'
 
@@ -54,6 +55,18 @@ export function nextReceiptNo(): string {
   return `R-${year}-${String(n).padStart(5, '0')}`
 }
 
+/** One definition of what a payment row looks like, for the list and for one. */
+const PAYMENT_SELECT = `
+  SELECT p.*, st.full_name AS student_name, st.student_code, f.item_name
+    FROM fee_payments p
+    JOIN students st ON st.id = p.student_id
+    LEFT JOIN fee_structures f ON f.id = p.fee_structure_id`
+
+/** A single payment by id: a primary-key lookup, whatever the history holds. */
+export function getPayment(id: number): FeePayment | null {
+  return (getDb().prepare(`${PAYMENT_SELECT} WHERE p.id = ?`).get(id) as FeePayment | undefined) ?? null
+}
+
 export function listPayments(filter: { student_id?: number; from?: string; to?: string; search?: string } = {}): FeePayment[] {
   const clauses = ['p.deleted_at IS NULL']
   const params: Record<string, unknown> = {}
@@ -65,14 +78,7 @@ export function listPayments(filter: { student_id?: number; from?: string; to?: 
     params.q = `%${filter.search.trim()}%`
   }
   return getDb()
-    .prepare(
-      `SELECT p.*, st.full_name AS student_name, st.student_code, f.item_name
-         FROM fee_payments p
-         JOIN students st ON st.id = p.student_id
-         LEFT JOIN fee_structures f ON f.id = p.fee_structure_id
-        WHERE ${clauses.join(' AND ')}
-        ORDER BY p.date DESC, p.id DESC`
-    )
+    .prepare(`${PAYMENT_SELECT} WHERE ${clauses.join(' AND ')} ORDER BY p.date DESC, p.id DESC`)
     .all(params) as FeePayment[]
 }
 
@@ -80,18 +86,32 @@ export function recordPayment(input: {
   student_id: number; fee_structure_id?: number | null; amount_paid: number
   date?: string; method?: FeePayment['method']; note?: string | null
 }, userId: number | null): FeePayment {
-  if (!(input.amount_paid > 0)) throw new Error('Please type an amount greater than zero.')
-  const receiptNo = nextReceiptNo()
-  const info = getDb()
-    .prepare(
-      `INSERT INTO fee_payments (student_id, fee_structure_id, amount_paid, date, method, receipt_no, note, recorded_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      input.student_id, input.fee_structure_id ?? null, input.amount_paid,
-      input.date ?? today(), input.method ?? 'cash', receiptNo, input.note ?? null, userId
-    )
-  return listPayments({}).find((p) => p.id === Number(info.lastInsertRowid))!
+  const row = {
+    student_id: id(input.student_id, 'The student'),
+    fee_structure_id: optionalId(input.fee_structure_id, 'The fee'),
+    amount_paid: amount(input.amount_paid),
+    date: input.date ? isoDate(input.date, 'The payment date') : today(),
+    method: paymentMethod(input.method),
+    note: optionalText(input.note, 'The note'),
+  }
+  const d = getDb()
+  // Reading the next receipt number and using it happen in one transaction.
+  // Nothing can interleave today — every call finishes on the one main thread
+  // — and receipt_no is UNIQUE regardless; this keeps the pair atomic if the
+  // database work is ever moved off that thread.
+  const insert = d.transaction(() => {
+    const receiptNo = nextReceiptNo()
+    return d
+      .prepare(
+        `INSERT INTO fee_payments (student_id, fee_structure_id, amount_paid, date, method, receipt_no, note, recorded_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(row.student_id, row.fee_structure_id, row.amount_paid, row.date, row.method, receiptNo, row.note, userId)
+  })
+  // Read back the one row just written. This used to list every payment the
+  // school had ever taken and pick one out, so each payment got slower than
+  // the last for as long as the school used the program.
+  return getPayment(Number(insert().lastInsertRowid))!
 }
 
 export function deletePayment(id: number, userId: number | null): void {
@@ -187,12 +207,15 @@ export function financialSummary(): FinancialSummary {
     byClassMap.set(key, e)
   }
 
-  const collectedThisMonth = (d
-    .prepare(`SELECT COALESCE(SUM(amount_paid), 0) AS t FROM fee_payments WHERE deleted_at IS NULL AND date LIKE ?`)
-    .get(`${month}%`) as { t: number }).t
-  const collectedThisYear = (d
-    .prepare(`SELECT COALESCE(SUM(amount_paid), 0) AS t FROM fee_payments WHERE deleted_at IS NULL AND date LIKE ?`)
-    .get(`${year}%`) as { t: number }).t
+  // Ranges, not LIKE: see periodRange. Both run on every dashboard load.
+  const collectedIn = (period: string) => {
+    const { from, to } = periodRange(period)
+    return (d
+      .prepare(`SELECT COALESCE(SUM(amount_paid), 0) AS t FROM fee_payments WHERE deleted_at IS NULL AND date >= ? AND date < ?`)
+      .get(from, to) as { t: number }).t
+  }
+  const collectedThisMonth = collectedIn(month)
+  const collectedThisYear = collectedIn(String(year))
 
   const byMonth = d
     .prepare(

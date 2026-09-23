@@ -3,10 +3,12 @@ import path from 'node:path'
 import { builtinModules } from 'node:module'
 
 /**
- * A second, tiny bundle: the headless data builder. It is kept out of the main
- * config so nothing about the app's own build can be disturbed by it, and it
- * never ships — it runs on the machine making the package.
+ * Bundles for the headless tools that run on the machine making a package:
+ * the data builder (TOOL=seed, the default) and the benchmark (TOOL=bench).
+ * Kept out of the main config so nothing about the app's own build can be
+ * disturbed by them, and excluded from the package in electron-builder.yml.
  */
+const TOOL = process.env.TOOL === 'bench' ? 'bench' : 'seed'
 export default defineConfig({
   resolve: {
     alias: {
@@ -17,7 +19,7 @@ export default defineConfig({
   build: {
     outDir: 'dist-electron',
     emptyOutDir: false,
-    lib: { entry: 'electron/seed-cli.ts', formats: ['cjs'], fileName: () => 'seed-cli.js' },
+    lib: { entry: `electron/${TOOL}-cli.ts`, formats: ['cjs'], fileName: () => `${TOOL}-cli.js` },
     rollupOptions: {
       // Both spellings: rollup treats `node:fs` and `fs` as different ids, and
       // bundling either one turns it into a stub that throws at run time.

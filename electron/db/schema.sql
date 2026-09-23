@@ -293,6 +293,8 @@ CREATE INDEX IF NOT EXISTS idx_attendance_date    ON attendance(date);
 CREATE INDEX IF NOT EXISTS idx_attendance_student ON attendance(student_id, date);
 CREATE INDEX IF NOT EXISTS idx_grades_lookup      ON grades(exam_term_id, student_id);
 CREATE INDEX IF NOT EXISTS idx_payments_student   ON fee_payments(student_id);
+-- "Collected this month" on the dashboard is a date range over every payment.
+CREATE INDEX IF NOT EXISTS idx_payments_date      ON fee_payments(date) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_timetable_section  ON timetable_entries(section_id, day_of_week);
 CREATE INDEX IF NOT EXISTS idx_recycle_open       ON recycle_bin(restored_at, deleted_at);
 
@@ -493,3 +495,73 @@ CREATE INDEX IF NOT EXISTS idx_library_loans_book ON library_loans(book_id);
 CREATE INDEX IF NOT EXISTS idx_riders_route       ON transport_riders(route_id) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_riders_student     ON transport_riders(student_id);
 CREATE INDEX IF NOT EXISTS idx_transport_payments ON transport_payments(rider_id);
+
+/* ---------------------------------------------------------------------------
+   Integrity backstops.
+
+   The services validate everything before writing (electron/validate.ts), so
+   none of these should ever fire. They exist for the day a future code path
+   forgets: the columns below feed every attendance percentage and every money
+   total in the school, and one bad row silently corrupts all of them.
+
+   Triggers rather than CHECK constraints because SQLite cannot add a CHECK to
+   a table that already exists. A school that has used the program for a year
+   would never receive one; it does receive these, on the next start.
+
+   Scoped with UPDATE OF <column>, so a soft delete or a restore — which only
+   touch deleted_at — is never blocked by an old row that predates the rules.
+   --------------------------------------------------------------------------- */
+
+CREATE TRIGGER IF NOT EXISTS attendance_status_ins BEFORE INSERT ON attendance
+WHEN NEW.status NOT IN ('present', 'absent', 'late', 'excused')
+BEGIN SELECT RAISE(ABORT, 'attendance status must be present, absent, late or excused'); END;
+
+CREATE TRIGGER IF NOT EXISTS attendance_status_upd BEFORE UPDATE OF status ON attendance
+WHEN NEW.status NOT IN ('present', 'absent', 'late', 'excused')
+BEGIN SELECT RAISE(ABORT, 'attendance status must be present, absent, late or excused'); END;
+
+CREATE TRIGGER IF NOT EXISTS attendance_date_ins BEFORE INSERT ON attendance
+WHEN NEW.date NOT GLOB '[12][0-9][0-9][0-9]-[01][0-9]-[0-3][0-9]'
+BEGIN SELECT RAISE(ABORT, 'attendance date must be YYYY-MM-DD'); END;
+
+CREATE TRIGGER IF NOT EXISTS staff_attendance_status_ins BEFORE INSERT ON staff_attendance
+WHEN NEW.status NOT IN ('present', 'absent', 'late', 'leave')
+BEGIN SELECT RAISE(ABORT, 'staff attendance status must be present, absent, late or leave'); END;
+
+CREATE TRIGGER IF NOT EXISTS staff_attendance_status_upd BEFORE UPDATE OF status ON staff_attendance
+WHEN NEW.status NOT IN ('present', 'absent', 'late', 'leave')
+BEGIN SELECT RAISE(ABORT, 'staff attendance status must be present, absent, late or leave'); END;
+
+/* Money: positive, finite, and below a bound no school payment reaches. The
+   upper bound is what catches Infinity, which is greater than any number. */
+CREATE TRIGGER IF NOT EXISTS fee_payment_amount_ins BEFORE INSERT ON fee_payments
+WHEN NOT (NEW.amount_paid > 0 AND NEW.amount_paid <= 10000000)
+BEGIN SELECT RAISE(ABORT, 'payment amount must be above 0 and at most 10,000,000'); END;
+
+CREATE TRIGGER IF NOT EXISTS fee_payment_amount_upd BEFORE UPDATE OF amount_paid ON fee_payments
+WHEN NOT (NEW.amount_paid > 0 AND NEW.amount_paid <= 10000000)
+BEGIN SELECT RAISE(ABORT, 'payment amount must be above 0 and at most 10,000,000'); END;
+
+CREATE TRIGGER IF NOT EXISTS fee_payment_method_ins BEFORE INSERT ON fee_payments
+WHEN NEW.method NOT IN ('cash', 'bank', 'card', 'other')
+BEGIN SELECT RAISE(ABORT, 'payment method must be cash, bank, card or other'); END;
+
+CREATE TRIGGER IF NOT EXISTS fee_payment_date_ins BEFORE INSERT ON fee_payments
+WHEN NEW.date NOT GLOB '[12][0-9][0-9][0-9]-[01][0-9]-[0-3][0-9]'
+BEGIN SELECT RAISE(ABORT, 'payment date must be YYYY-MM-DD'); END;
+
+CREATE TRIGGER IF NOT EXISTS transport_payment_amount_ins BEFORE INSERT ON transport_payments
+WHEN NOT (NEW.amount_paid > 0 AND NEW.amount_paid <= 10000000)
+BEGIN SELECT RAISE(ABORT, 'payment amount must be above 0 and at most 10,000,000'); END;
+
+CREATE TRIGGER IF NOT EXISTS transport_payment_method_ins BEFORE INSERT ON transport_payments
+WHEN NEW.method NOT IN ('cash', 'bank', 'card', 'other')
+BEGIN SELECT RAISE(ABORT, 'payment method must be cash, bank, card or other'); END;
+
+CREATE TRIGGER IF NOT EXISTS student_gender_ins BEFORE INSERT ON students
+WHEN NEW.gender IS NOT NULL AND NEW.gender NOT IN ('male', 'female')
+BEGIN SELECT RAISE(ABORT, 'student gender must be male, female or empty'); END;
+
+CREATE TRIGGER IF NOT EXISTS student_gender_upd BEFORE UPDATE OF gender ON students
+WHEN NEW.gender IS NOT NULL AND NEW.gender NOT IN ('male', 'female')
+BEGIN SELECT RAISE(ABORT, 'student gender must be male, female or empty'); END;

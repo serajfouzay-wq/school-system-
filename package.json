@@ -12,6 +12,7 @@
     "brand": "node scripts/brand.mjs",
     "school": "node scripts/build-school.mjs",
     "builder": "node scripts/builder/server.mjs",
+    "bench": "node scripts/bench.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "tsc --noEmit -p tsconfig.json",
     "preview": "vite preview",

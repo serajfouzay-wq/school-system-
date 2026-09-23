@@ -1,4 +1,5 @@
-import { getDb } from '../db/index'
+import { ValidationError, isoDate, oneOf, id, optionalText, ATTENDANCE, STAFF_ATTENDANCE } from '../validate'
+import { getDb, periodRange } from '../db/index'
 import type { AttendanceStatus, StaffAttendanceStatus } from '../../shared/types'
 
 export interface AttendanceRow {
@@ -28,6 +29,15 @@ export function getSectionAttendance(sectionId: number, date: string): Attendanc
 export interface AttendanceMark { student_id: number; status: AttendanceStatus; note?: string | null }
 
 export function saveAttendance(date: string, marks: AttendanceMark[], userId: number | null): number {
+  const day = isoDate(date, 'The attendance date')
+  if (!Array.isArray(marks)) throw new ValidationError('No attendance marks were sent.')
+  // Checked in full before anything is written, so a bad mark part-way through
+  // a class never leaves half of it saved.
+  const clean = marks.map((m) => ({
+    student_id: id(m?.student_id, 'A student'),
+    status: oneOf(m?.status, ATTENDANCE, 'An attendance mark'),
+    note: optionalText(m?.note, 'A note'),
+  }))
   const d = getDb()
   const stmt = d.prepare(
     `INSERT INTO attendance (student_id, date, status, note, marked_by)
@@ -35,26 +45,28 @@ export function saveAttendance(date: string, marks: AttendanceMark[], userId: nu
      ON CONFLICT(student_id, date) DO UPDATE SET
        status = excluded.status, note = excluded.note, marked_by = excluded.marked_by, deleted_at = NULL`
   )
-  const tx = d.transaction((list: AttendanceMark[]) => {
-    for (const m of list) {
-      stmt.run({ student_id: m.student_id, date, status: m.status, note: m.note ?? null, marked_by: userId })
-    }
+  const tx = d.transaction((list: typeof clean) => {
+    for (const m of list) stmt.run({ ...m, date: day, marked_by: userId })
   })
-  tx(marks)
-  return marks.length
+  tx(clean)
+  return clean.length
 }
 
 /** Month view for the colour-coded calendar on a student's profile. */
 export function getStudentAttendanceMonth(studentId: number, month: string): { date: string; status: AttendanceStatus }[] {
+  const { from, to } = periodRange(month)
   return getDb()
     .prepare(
       `SELECT date, status FROM attendance
-        WHERE student_id = ? AND deleted_at IS NULL AND date LIKE ? ORDER BY date`
+        WHERE student_id = ? AND deleted_at IS NULL AND date >= ? AND date < ? ORDER BY date`
     )
-    .all(studentId, `${month}%`) as { date: string; status: AttendanceStatus }[]
+    .all(studentId, from, to) as { date: string; status: AttendanceStatus }[]
 }
 
 export function getSectionAttendanceMonth(sectionId: number, month: string) {
+  const { from, to } = periodRange(month)
+  // Driven from the class's students, then a range seek on (student_id, date)
+  // for each: about 900 rows for a month, instead of the whole school's year.
   return getDb()
     .prepare(
       `SELECT a.date,
@@ -62,12 +74,13 @@ export function getSectionAttendanceMonth(sectionId: number, month: string) {
               SUM(a.status = 'absent') AS absent,
               SUM(a.status = 'late') AS late,
               SUM(a.status = 'excused') AS excused
-         FROM attendance a
-         JOIN students st ON st.id = a.student_id
-        WHERE st.section_id = ? AND a.deleted_at IS NULL AND a.date LIKE ?
+         FROM students st
+         JOIN attendance a ON a.student_id = st.id
+        WHERE st.section_id = ? AND st.deleted_at IS NULL
+          AND a.deleted_at IS NULL AND a.date >= ? AND a.date < ?
         GROUP BY a.date ORDER BY a.date`
     )
-    .all(sectionId, `${month}%`) as { date: string; present: number; absent: number; late: number; excused: number }[]
+    .all(sectionId, from, to) as { date: string; present: number; absent: number; late: number; excused: number }[]
 }
 
 export interface AttendanceReportRow {
@@ -134,6 +147,13 @@ export function saveStaffAttendance(
   marks: { staff_id: number; status: StaffAttendanceStatus; note?: string | null }[],
   userId: number | null
 ): number {
+  const day = isoDate(date, 'The attendance date')
+  if (!Array.isArray(marks)) throw new ValidationError('No attendance marks were sent.')
+  const clean = marks.map((m) => ({
+    staff_id: id(m?.staff_id, 'A member of staff'),
+    status: oneOf(m?.status, STAFF_ATTENDANCE, 'An attendance mark'),
+    note: optionalText(m?.note, 'A note'),
+  }))
   const d = getDb()
   const stmt = d.prepare(
     `INSERT INTO staff_attendance (staff_id, date, status, note, marked_by)
@@ -141,9 +161,9 @@ export function saveStaffAttendance(
      ON CONFLICT(staff_id, date) DO UPDATE SET
        status = excluded.status, note = excluded.note, marked_by = excluded.marked_by, deleted_at = NULL`
   )
-  const tx = d.transaction((list: typeof marks) => {
-    for (const m of list) stmt.run({ staff_id: m.staff_id, date, status: m.status, note: m.note ?? null, marked_by: userId })
+  const tx = d.transaction((list: typeof clean) => {
+    for (const m of list) stmt.run({ ...m, date: day, marked_by: userId })
   })
-  tx(marks)
-  return marks.length
+  tx(clean)
+  return clean.length
 }
