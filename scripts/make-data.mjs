@@ -9,12 +9,11 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { execFileSync } from 'node:child_process'
+import { node, electron } from './tools.mjs'
 import { fileURLToPath } from 'node:url'
 import { readTable, STUDENT_COLUMNS, STAFF_COLUMNS, CLASS_COLUMNS, SUBJECT_COLUMNS } from './csv.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
-const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx'
 
 function read(file, columns, label) {
   const full = path.resolve(ROOT, file)
@@ -85,9 +84,9 @@ export function makeData(brandFile, outDir) {
   fs.writeFileSync(planFile, JSON.stringify(plan, null, 1))
 
   // The seeder needs its own bundle, which is not part of the app's build.
-  execFileSync(npx, ['vite', 'build', '--config', 'vite.seed.config.ts'], { cwd: ROOT, stdio: 'ignore' })
-  execFileSync(npx, ['electron', 'dist-electron/seed-cli.js', planFile, path.join(outDir, 'school_data.db'), '--no-sandbox'],
-    { cwd: ROOT, stdio: 'inherit' })
+  node('vite', ['build', '--config', 'vite.seed.config.ts'], { stdio: 'ignore' })
+  electron(['dist-electron/seed-cli.js', planFile, path.join(outDir, 'school_data.db'), '--no-sandbox'],
+    { stdio: 'inherit' })
 
   fs.rmSync(planFile, { force: true })
   return path.join(outDir, 'school_data.db')

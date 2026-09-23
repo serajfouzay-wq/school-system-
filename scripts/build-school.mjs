@@ -8,15 +8,14 @@
  * Nothing in src/ or electron/ is edited for a new school. Copy
  * brands/example.json, change the name and the colour, run this.
  */
-import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { makeData } from './make-data.mjs'
 import { isLocked, makeLicense } from './license-keys.mjs'
+import { node, electron } from './tools.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
-const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx'
 
 const args = process.argv.slice(2)
 const file = args.find((a) => !a.startsWith('-'))
@@ -27,9 +26,9 @@ if (!file) {
   process.exit(1)
 }
 
-const run = (cmd, cmdArgs, label) => {
+const run = (script, scriptArgs, label) => {
   try {
-    execFileSync(cmd, cmdArgs, { cwd: ROOT, stdio: 'inherit' })
+    node(script, scriptArgs, { stdio: 'inherit' })
   } catch {
     console.error(`\n  Stopped: ${label} failed.`)
     process.exit(1)
@@ -51,15 +50,15 @@ const executableName = productName.toLowerCase().replace(/[^a-z0-9]+/g, '-').rep
 console.log(`\n== ${productName} ==\n`)
 
 console.log('Step 1 of 5  branding')
-run('node', ['scripts/brand.mjs', file], 'branding')
+run('scripts/brand.mjs', [file], 'branding')
 
 // The lettered icon is drawn by Electron, which needs a screen. A machine
 // without one still gets an icon in the school's colour rather than no build.
 console.log('\nStep 2 of 5  icon')
 try {
-  execFileSync(npx, ['electron', 'scripts/make-icon.mjs', file, '--no-sandbox'], { cwd: ROOT, stdio: 'inherit' })
+  electron(['scripts/make-icon.mjs', file, '--no-sandbox'], { stdio: 'inherit' })
 } catch {
-  run('node', ['scripts/icon-fallback.mjs', file], 'the icon')
+  run('scripts/icon-fallback.mjs', [file], 'the icon')
 }
 
 // The school's own data, if they gave us any. A fresh folder each time, so a
@@ -99,8 +98,8 @@ if (isLocked(brand) && brand.license?.machines?.length) {
 }
 
 console.log('\nStep 4 of 5  bundle')
-run(npx, ['tsc', '--noEmit', '-p', 'tsconfig.json'], 'the typecheck')
-run(npx, ['vite', 'build'], 'the bundle')
+run('tsc', ['--noEmit', '-p', 'tsconfig.json'], 'the typecheck')
+run('vite', ['build'], 'the bundle')
 
 if (!targets.length) {
   console.log(`\nDone. Branded bundle ready. Add --win, --linux or --dir to make a package.\n`)
@@ -108,8 +107,7 @@ if (!targets.length) {
 }
 
 console.log(`\nStep 5 of 5  package (${targets.join(' ')})`)
-run(npx, [
-  'electron-builder',
+run('electron-builder', [
   ...targets,
   `-c.productName=${productName}`,
   `-c.appId=${appId}`,

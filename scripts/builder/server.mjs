@@ -20,6 +20,21 @@ import { parseMachineCodes } from '../../shared/license.mjs'
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const ROOT = path.join(HERE, '..', '..')
 const PORT = Number(process.env.PORT) || 4321
+// Started by double-clicking on Windows: open the page, and the folder with the
+// finished installer, instead of leaving someone to find them.
+const OPEN = process.argv.includes('--open')
+
+/** Shows a web address or a folder the way the desktop would. */
+function reveal(target) {
+  if (!OPEN) return
+  const [cmd, args] =
+    process.platform === 'win32' ? ['explorer.exe', [target]]
+    : process.platform === 'darwin' ? ['open', [target]]
+    : ['xdg-open', [target]]
+  try {
+    spawn(cmd, args, { detached: true, stdio: 'ignore' }).on('error', () => {}).unref()
+  } catch { /* the address is printed in the window anyway */ }
+}
 
 const send = (res, code, body, type = 'application/json') => {
   res.writeHead(code, { 'Content-Type': `${type}; charset=utf-8`, 'Cache-Control': 'no-store' })
@@ -170,6 +185,7 @@ const server = http.createServer(async (req, res) => {
     child.stdout.on('data', (d) => res.write(d))
     child.stderr.on('data', (d) => res.write(d))
     child.on('close', (code) => {
+      if (code === 0 && form.target && form.target !== 'none') reveal(path.join(ROOT, 'release'))
       res.write(code === 0 ? `\n__DONE__ ${path.join(ROOT, 'release')}\n` : `\n__FAILED__ ${code}\n`)
       res.end()
     })
@@ -182,5 +198,15 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`\n  The workshop is open at  http://localhost:${PORT}\n`)
-  console.log('  Open that address in your browser. Press Ctrl+C here when you are done.\n')
+  console.log('  Open that address in your browser. Close this window when you are done.\n')
+  reveal(`http://localhost:${PORT}`)
+})
+
+server.on('error', (e) => {
+  // Most often: the workshop is already open in another window.
+  console.error(e.code === 'EADDRINUSE'
+    ? `\n  The workshop is already running. Open http://localhost:${PORT} in your browser.\n`
+    : `\n  The workshop could not start: ${e.message}\n`)
+  reveal(`http://localhost:${PORT}`)
+  process.exitCode = 1
 })

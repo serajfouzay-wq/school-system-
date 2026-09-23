@@ -1,0 +1,79 @@
+SCHOOL SYSTEM WORKSHOP - READ ME FIRST
+=======================================
+
+This is YOUR tool. It stays on your computer. You use it to make each
+school's own copy of the School System: their name, colour, logo, the
+parts they bought, and their students and staff already inside. It gives
+you an installer to carry to the school on a USB stick.
+
+Never give this folder to a school.
+
+
+FIRST TIME (once only)
+----------------------
+1. Unzip this folder somewhere permanent, for example:
+       C:\SchoolWorkshop
+   (Not the Desktop and not Downloads: you will keep using it.)
+
+2. Double-click:  START WORKSHOP (Windows).bat
+
+   - If Node.js is missing, it opens the download page. Install the
+     "LTS" version, then double-click the file again.
+   - The first start downloads the build tools. It needs the internet
+     and takes 5-15 minutes. After that it starts in seconds.
+
+3. Your browser opens the workshop page.
+
+
+MAKING A SCHOOL'S COPY
+----------------------
+1. Fill in the school's name, colour and logo, then tick the parts they
+   get. Attach their spreadsheets if you have them.
+2. Put YOUR phone number in "A note for their staff". It shows on the
+   school's activation screen.
+3. Leave "Lock this copy to the school's computers" ticked.
+4. Package: Windows. Press Create. The first build takes longer (it
+   downloads Windows parts); later ones take a few minutes.
+5. When it finishes, the "release" folder opens. The installer is:
+       <School name>-Setup-1.0.0.exe
+   Copy it to the USB stick.
+
+
+AT THE SCHOOL
+-------------
+1. Run the installer. Windows may say "Windows protected your PC":
+   click "More info", then "Run anyway".
+2. The program opens showing "Activate this copy" and a computer code,
+   like  K7QF-3M9D-XW2P-A4TE.
+3. On your computer, in the workshop page, go to "Activate a computer":
+   pick the school, type the code, press "Make activation key".
+4. Give them the key: "Save as a file" onto the USB stick, then on their
+   screen press "Open the licence file". Or "Copy" it into WhatsApp and
+   they paste it.
+
+Tip: if you know the computer's code before you build, type it in
+"Their computer codes". That computer then opens straight away.
+
+
+BACK UP THE "keys" FOLDER
+-------------------------
+The first locked build creates a folder called "keys" in this folder.
+It is what lets you activate schools' computers.
+
+Copy it somewhere safe NOW: a USB stick you keep at home, not the one
+you take to schools.
+
+If you lose it, schools you already set up keep working. But you cannot
+activate a new or replaced computer for them without building and
+installing their copy again.
+
+Never give keys\license-private.pem to anyone.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+- The workshop page shows everything the build is doing. If it says
+  "It did not finish", the reason is at the end of the grey box. Send a
+  screenshot of it.
+- "The workshop is already running": it is open in another window. Use
+  that one, or close it and start again.
